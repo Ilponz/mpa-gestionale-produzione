@@ -1,0 +1,972 @@
+/* ==========================================================================
+   DESIGN ARCHITETTURALE LIQUID GLASS BIANCO E NERO (M.P.A. DI MAURIZIO CAVALLARO)
+   Minimalismo zen + Vetro Liquido (Liquid Glass / Frosted Glass) ad alta definizione.
+   Transizioni ultra-smooth, reticolo ortogonale, zero colori sgargianti, zero emoji.
+   ========================================================================== */
+
+:root {
+  /* Scala Monocromatica Liquida */
+  --bg-canvas: #060709;
+  --glass-surface: rgba(12, 14, 18, 0.72);
+  --glass-card: rgba(18, 21, 28, 0.58);
+  --glass-card-hover: rgba(26, 30, 42, 0.75);
+  --glass-card-active: rgba(32, 38, 52, 0.88);
+  --glass-subtle: rgba(22, 26, 35, 0.45);
+  --glass-input: rgba(8, 10, 14, 0.8);
+  --glass-modal: rgba(14, 16, 22, 0.88);
+
+  /* Testi e Quotature */
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0B5BD;
+  --text-muted: #656A76;
+
+  /* Linee di Rifrazione Vetro Liquido (Hairlines Pure) */
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-border-light: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-border-strong: 1px solid rgba(255, 255, 255, 0.28);
+  --glass-border-active: 1px solid #FFFFFF;
+  --glass-glow: 0 16px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+  /* Tipografia */
+  --font-display: 'Space Grotesk', -apple-system, sans-serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+/* Reset Strutturale Rigoroso */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 !important; /* Zero angoli smussati */
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-ui);
+  background-color: var(--bg-canvas);
+  background-image: 
+    radial-gradient(circle at 65% 25%, rgba(255, 255, 255, 0.04) 0%, transparent 55%),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+  background-position: 0 0, -1px -1px, -1px -1px;
+  color: var(--text-primary);
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Classi Liquid Glass */
+.liquid-glass {
+  background: var(--glass-surface);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: var(--glass-border);
+  box-shadow: var(--glass-glow);
+}
+
+.liquid-glass-card {
+  background: var(--glass-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: var(--glass-border-light);
+  transition: all 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-card:hover {
+  background: var(--glass-card-hover);
+  border-color: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.liquid-glass-card.active {
+  background: var(--glass-card-active);
+  border-color: #FFFFFF;
+  border-left: 3px solid #FFFFFF;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Tipografia */
+.font-display, h1, h2, h3, .brand-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.font-mono, .mm-val, .badge-dim, .code-label, .tech-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Struttura Radice */
+#app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-left: var(--glass-border);
+  border-right: var(--glass-border);
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* Header Pulito: SOLO NOME AZIENDA, ZERO SOTTOTITOLI O MENU */
+.app-header {
+  background: rgba(10, 12, 16, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: var(--glass-border);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #FFFFFF;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.operator-box {
+  border: var(--glass-border);
+  background: var(--glass-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 6px 14px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 140ms ease;
+}
+
+.operator-box:hover {
+  background: var(--glass-card-hover);
+  border-color: #FFFFFF;
+}
+
+.operator-label {
+  color: var(--text-muted);
+}
+
+.operator-val {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.connection-status {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border: var(--glass-border);
+  background: var(--glass-subtle);
+  color: #FFFFFF;
+}
+
+.connection-status.offline {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+
+.admin-badge-active {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  background: #FFFFFF;
+  color: #000000;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   WORKSPACE LIQUID GLASS A TRANSIZIONE FLUIDA
+   Barra Laterale Navigatrice a Due Livelli + Spazio Principale
+   ========================================================================== */
+
+.workspace-layout {
+  display: flex;
+  height: calc(100vh - 56px);
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Contenitore Barra Laterale Animata a Scorrimento */
+.sidebar-navigator {
+  width: 370px;
+  min-width: 330px;
+  max-width: 400px;
+  border-right: var(--glass-border);
+  background: var(--glass-surface);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+/* I Due Pannelli a Scorrimento Orizzontale Smooth */
+.nav-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  transition: transform 340ms cubic-bezier(0.16, 1, 0.3, 1), opacity 340ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+/* Livello 1: Commesse */
+.nav-panel-projects.state-active {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-panel-projects.state-hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Livello 2: Componenti / Telai */
+.nav-panel-components.state-active {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-panel-components.state-hidden {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Header del Pannello Laterale */
+.panel-header {
+  padding: 16px 20px;
+  border-bottom: var(--glass-border);
+  background: rgba(14, 16, 22, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+}
+
+/* Pulsante Indietro / Sezione Antecedente */
+.btn-nav-back {
+  background: transparent;
+  border: var(--glass-border);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 140ms ease;
+}
+
+.btn-nav-back:hover {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+/* Lista Scrollabile Interna al Pannello */
+.panel-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Scheda Progetto in Colonna Sinistra */
+.project-item-card {
+  padding: 16px 18px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.p-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.p-card-code {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.p-card-deadline {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.p-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #FFFFFF;
+  line-height: 1.25;
+}
+
+.p-card-client {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Barra di Completamento con Percentuale (Richiesta Utente) */
+.p-progress-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.p-progress-track {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.p-progress-fill {
+  height: 100%;
+  background: #FFFFFF;
+  transition: width 240ms ease;
+}
+
+.p-progress-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #FFFFFF;
+  min-width: 38px;
+  text-align: right;
+}
+
+/* Scheda Componente / Telaio nel Livello 2 */
+.component-item-card {
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.comp-card-page {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.comp-card-code {
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.04em;
+}
+
+.comp-card-title {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.comp-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+/* Footer Pannello Laterale */
+.panel-footer {
+  padding: 12px 16px;
+  border-top: var(--glass-border);
+  background: rgba(14, 16, 22, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-panel-action {
+  background: transparent;
+  border: var(--glass-border);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 120ms ease;
+  width: 100%;
+}
+
+.btn-panel-action:hover {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+}
+
+/* ==========================================================================
+   SPAZIO CENTRALE PRINCIPALE (MAIN STAGE)
+   Sfondo visibile finché non si seleziona un componente.
+   Quando si clicca un pezzo, compare la sezione Liquid Glass.
+   ========================================================================== */
+
+.main-stage {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Stato Vuoto / Sfondo Zen HUD */
+.empty-stage-hud {
+  margin: auto;
+  max-width: 640px;
+  width: 100%;
+  padding: 48px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: liquidEnter 340ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hud-tag {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.hud-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hud-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.hud-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding-top: 16px;
+  border-top: var(--glass-border-light);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Sezione del Componente Selezionato in Liquid Glass */
+.component-workstation {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  animation: liquidEnter 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes liquidEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.workstation-header {
+  padding: 18px 24px;
+  border-bottom: var(--glass-border);
+  background: rgba(14, 16, 22, 0.6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workstation-title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workstation-page-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.workstation-main-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.04em;
+}
+
+.workstation-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Griglia Lavoro: Disegno CAD a Sinistra + Distinta a Destra */
+.workstation-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+@media (min-width: 1200px) {
+  .workstation-grid {
+    grid-template-columns: 1.35fr 1fr;
+  }
+}
+
+.workstation-cad-box {
+  background: #FFFFFF;
+  border-bottom: var(--glass-border);
+  position: relative;
+  min-height: 440px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+@media (min-width: 1200px) {
+  .workstation-cad-box {
+    border-bottom: none;
+    border-right: var(--glass-border);
+  }
+}
+
+.workstation-morali-box {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 12, 16, 0.4);
+}
+
+/* Modali Architetturali */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-box {
+  background: var(--glass-modal);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: var(--glass-border-strong);
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: var(--glass-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(14, 16, 22, 0.6);
+}
+
+.modal-header h3 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #FFFFFF;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: var(--glass-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: rgba(14, 16, 22, 0.6);
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.form-control {
+  width: 100%;
+  background: var(--glass-input);
+  border: var(--glass-border-light);
+  color: #FFFFFF;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color 140ms ease;
+}
+
+.form-control:focus {
+  border-color: #FFFFFF;
+}
+
+/* Pulsanti */
+.btn-solid-white {
+  background: #FFFFFF;
+  color: #000000;
+  border: 1px solid #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.btn-solid-white:hover {
+  background: #000000;
+  color: #FFFFFF;
+}
+
+.btn-outline-white {
+  background: transparent;
+  color: #FFFFFF;
+  border: var(--glass-border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.btn-outline-white:hover {
+  border-color: #FFFFFF;
+  background: var(--glass-card-hover);
+}
+
+.btn-outline-sm {
+  background: transparent;
+  color: var(--text-secondary);
+  border: var(--glass-border-light);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.btn-outline-sm:hover {
+  color: #FFFFFF;
+  border-color: #FFFFFF;
+  background: var(--glass-card-hover);
+}
+
+/* Menu Contestuale Tasto Destro (Liquid Glass) */
+.liquid-context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(14, 16, 22, 0.94);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  min-width: 220px;
+  display: none;
+  flex-direction: column;
+  animation: menuFadeIn 120ms ease;
+}
+
+@keyframes menuFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.context-menu-header {
+  padding: 8px 14px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.context-menu-item {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 80ms ease, color 80ms ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.context-menu-item:last-child {
+  border-bottom: none;
+}
+
+.context-menu-item:hover {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+.context-menu-item.destructive {
+  color: #FF5555;
+}
+
+.context-menu-item.destructive:hover {
+  background: #FF4444;
+  color: #FFFFFF;
+}
+
+/* Pop-up di Conferma a Tema al Centro della Pagina (Liquid Glass) */
+.confirm-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 20px;
+}
+
+.confirm-popup-card {
+  background: rgba(14, 16, 24, 0.95);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  width: 100%;
+  max-width: 440px;
+  animation: popIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.93) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.confirm-popup-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(22, 26, 36, 0.6);
+}
+
+.confirm-popup-title {
+  font-size: 13px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+}
+
+.confirm-popup-body {
+  padding: 24px 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.confirm-popup-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: rgba(22, 26, 36, 0.6);
+}
+
+/* Area di Caricamento PDF SEMA (Drag & Drop) */
+.pdf-dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.22);
+  background: rgba(18, 22, 30, 0.5);
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 160ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pdf-dropzone:hover, .pdf-dropzone.dragover {
+  border-color: #FFFFFF;
+  background: rgba(30, 36, 50, 0.7);
+}
+
+.pdf-dropzone-icon {
+  font-size: 20px;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.pdf-dropzone-title {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.06em;
+}
+
+.pdf-dropzone-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.pdf-dropzone-selected {
+  font-size: 11px;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-top: 6px;
+  display: none;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 850px) {
+  .sidebar-navigator {
+    width: 300px;
+    min-width: 280px;
+  }
+  .main-stage {
+    padding: 16px;
+  }
+}

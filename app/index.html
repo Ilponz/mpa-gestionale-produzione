@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="MPA di Maurizio Cavallaro - Sistema di Gestione Produzione">
+  
+  <title>MPA di Maurizio Cavallaro</title>
+
+  <!-- PWA Manifest & Favicon -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Google Fonts: Space Grotesk (Luxury Display), Inter (Precision UI) & JetBrains Mono (Technical) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stili Applicazione (B&W Architectural Style) -->
+  <link rel="stylesheet" href="css/style.css?v=5.0">
+  <link rel="stylesheet" href="css/components.css?v=5.0">
+</head>
+<body>
+  <!-- Contenitore Radice Applicazione -->
+  <div id="app-root"></div>
+
+  <!-- PDF.js per Rendering e Parsing Client-Side dei PDF SEMA -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Script Applicativi (Cache Busted v6.0) -->
+  <script src="js/mock-data.js?v=6.0"></script>
+  <script src="js/storage.js?v=6.0"></script>
+  <script src="js/auth.js?v=6.0"></script>
+  <script src="js/app.js?v=6.0"></script>
+
+  <!-- Registrazione PWA Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js?v=5.0')
+          .then(reg => reg.update())
+          .catch(err => console.warn('[PWA] SW warning:', err));
+      });
+    }
+  </script>
+</body>
+</html>

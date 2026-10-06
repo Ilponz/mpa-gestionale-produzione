@@ -1,0 +1,745 @@
+/* ==========================================================================
+   COMPONENTI ARCHITETTURALI BIANCO E NERO (SEZIONI & RIQUADRI INTERNI)
+   Struttura a reticolo ortogonale, riquadri nidificati a incastro, zero icone.
+   ========================================================================== */
+
+/* Riquadro Principale Commessa */
+.project-banner {
+  background: var(--bg-surface);
+  border: var(--line-structural);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.project-title-box {
+  flex: 1;
+  min-width: 320px;
+}
+
+.project-title-box h2 {
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Riquadro Interno Metadati */
+.project-meta-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border: var(--line-internal);
+  font-size: 11px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.meta-item span.label {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.meta-item span.val {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* Riquadro Interno Avanzamento */
+.progress-summary {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 20px;
+  background: var(--bg-subtle);
+  border: var(--line-internal);
+  min-width: 300px;
+}
+
+.progress-numeric {
+  text-align: right;
+}
+
+.percent-big {
+  font-size: 30px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.percent-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  margin-top: 4px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 2px;
+  background: #1C1E24;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #FFFFFF;
+  transition: width 200ms ease;
+}
+
+/* Barra Strumenti & Filtri a Reticolo */
+.filter-search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 14px 20px;
+  background: var(--bg-surface);
+  border: var(--line-structural);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-input);
+  border: var(--line-internal);
+  padding: 8px 14px;
+  flex: 1;
+  min-width: 260px;
+  max-width: 460px;
+}
+
+.search-box span.prefix {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  font-family: var(--font-mono);
+}
+
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.filter-pills-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.filter-pill {
+  background: var(--bg-card);
+  border: var(--line-internal);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 100ms ease;
+}
+
+.filter-pill:hover {
+  background: var(--bg-card-hover);
+  color: #FFFFFF;
+  border-color: var(--line-strong);
+}
+
+.filter-pill.active {
+  background: #FFFFFF;
+  color: #000000;
+  border: 1px solid #FFFFFF;
+  font-weight: 700;
+}
+
+/* Griglia Telai a Matrice */
+.components-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.component-card {
+  background: var(--bg-card);
+  border: var(--line-structural);
+  padding: 20px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.component-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--line-strong);
+}
+
+.component-card.selected {
+  border-color: #FFFFFF;
+  background: var(--bg-card-hover);
+}
+
+.card-header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.comp-code-pill {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #FFFFFF;
+}
+
+.comp-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Riquadro Interno Info Telaio */
+.card-inner-box {
+  background: var(--bg-subtle);
+  border: var(--line-internal);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Badge di Stato Bianco & Nero */
+.status-pill {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 4px 8px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.status-done {
+  background: #FFFFFF;
+  color: #000000;
+  border: 1px solid #FFFFFF;
+}
+
+.status-wip {
+  background: transparent;
+  color: #FFFFFF;
+  border: 1px solid #FFFFFF;
+}
+
+.status-paused {
+  background: transparent;
+  color: #A0A5AD;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+}
+
+.status-todo {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Dettaglio Telaio: Pannello Lavoro Tecnico */
+.work-panel {
+  background: var(--bg-surface);
+  border: var(--line-structural);
+  padding: 24px;
+}
+
+.drawing-wrapper {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.drawing-container {
+  background: #FFFFFF;
+  overflow: hidden;
+  position: relative;
+  min-height: 360px;
+  max-height: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--line-strong);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drawing-container:active {
+  cursor: grabbing;
+}
+
+.drawing-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  transform-origin: center center;
+  transition: transform 100ms ease-out;
+  pointer-events: none;
+}
+
+/* Controlli Zoom CAD Lineari */
+.cad-zoom-bar {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  background: #000000;
+  border-top: var(--line-structural);
+  border-left: var(--line-structural);
+  z-index: 10;
+}
+
+.zoom-btn {
+  background: transparent;
+  border: none;
+  border-right: var(--line-internal);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 100ms ease;
+}
+
+.zoom-btn:last-child {
+  border-right: none;
+}
+
+.zoom-btn:hover {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+/* Tabella Distinta Morali */
+.morali-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #FFFFFF;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: var(--line-structural);
+  padding-bottom: 8px;
+}
+
+.morali-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.moral-item {
+  background: var(--bg-card);
+  border: var(--line-internal);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.moral-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--line-strong);
+}
+
+.moral-item.checked {
+  background: var(--bg-subtle);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.moral-item.checked .moral-qty,
+.moral-item.checked .moral-len,
+.moral-item.checked .moral-desc {
+  text-decoration: line-through;
+  opacity: 0.35;
+}
+
+.moral-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 800;
+  background: transparent;
+}
+
+.moral-item.checked .moral-checkbox {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #000000;
+}
+
+.moral-details {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex: 1;
+  margin-left: 14px;
+}
+
+.moral-qty {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.moral-len {
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.moral-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.moral-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.4;
+}
+
+.moral-delete-btn:hover {
+  opacity: 1;
+  color: #FFFFFF;
+}
+
+.btn-add-moral {
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 10px;
+  width: 100%;
+  cursor: pointer;
+  margin-top: 10px;
+  text-align: center;
+  transition: all 120ms ease;
+}
+
+.btn-add-moral:hover {
+  background: var(--bg-card);
+  color: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+/* Riquadri Lavoro Fasi */
+.action-box {
+  background: var(--bg-card);
+  border: var(--line-structural);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.action-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.action-title {
+  font-size: 11px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #FFFFFF;
+}
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 10px;
+}
+
+.btn-action {
+  min-height: 42px;
+  border: var(--line-structural);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 100ms ease;
+  color: #FFFFFF;
+  background: var(--bg-surface);
+}
+
+.btn-start {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #000000;
+}
+
+.btn-start:hover {
+  background: #E0E0E0;
+}
+
+.btn-pause {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-secondary);
+}
+
+.btn-pause:hover {
+  background: var(--bg-subtle);
+  border-color: #FFFFFF;
+  color: #FFFFFF;
+}
+
+.btn-finish {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #000000;
+  font-weight: 800;
+}
+
+.btn-finish:hover {
+  background: #E5E5E5;
+}
+
+/* Pulsante Stealth Admin in Basso a Destra */
+.stealth-admin-trigger {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  padding: 8px 16px;
+  background: #000000;
+  border-top: var(--line-structural);
+  border-left: var(--line-structural);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  z-index: 50;
+  opacity: 0.5;
+  transition: opacity 120ms ease;
+}
+
+.stealth-admin-trigger:hover {
+  opacity: 1;
+  color: #FFFFFF;
+  background: var(--bg-card);
+}
+
+/* Modale Tastierino PIN Tecnico */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.90);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal-pin-box {
+  background: var(--bg-surface);
+  border: var(--line-strong);
+  padding: 30px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.pin-display {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px 0 22px;
+}
+
+.pin-dot {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+}
+
+.pin-dot.filled {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.pin-key {
+  height: 48px;
+  background: var(--bg-card);
+  border: var(--line-internal);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 100ms ease;
+}
+
+.pin-key:hover {
+  background: var(--bg-card-hover);
+  border-color: #FFFFFF;
+}
+
+/* Modale Operatori con Gestione per Michele Admin */
+.operator-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.operator-select-btn {
+  background: var(--bg-card);
+  border: var(--line-internal);
+  padding: 14px 10px;
+  text-align: center;
+  cursor: pointer;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 100ms ease;
+  position: relative;
+}
+
+.operator-select-btn:hover {
+  border-color: #FFFFFF;
+  background: var(--bg-card-hover);
+}
+
+.operator-select-btn.active {
+  border-color: #FFFFFF;
+  background: #FFFFFF;
+  color: #000000;
+  font-weight: 700;
+}
+
+.operator-remove-link {
+  font-size: 9px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-top: 4px;
+  display: block;
+  text-decoration: underline;
+}
+
+.operator-remove-link:hover {
+  color: #FFFFFF;
+}
+
+/* Tabella Log Lavorazioni */
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  text-align: left;
+}
+
+.logs-table th {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  padding: 12px 16px;
+  border-bottom: var(--line-structural);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.logs-table td {
+  padding: 12px 16px;
+  border-bottom: var(--line-internal);
+  color: #FFFFFF;
+}
+
+.logs-table tr:hover {
+  background: var(--bg-card-hover);
+}
