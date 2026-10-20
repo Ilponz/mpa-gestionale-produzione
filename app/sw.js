@@ -1,5 +1,5 @@
-// Service Worker per MPA Gestionale Produzione v6.0 (PDF Engine & Context Menu)
-const CACHE_NAME = 'mpa-gestionale-v6.0';
+// Service Worker per MPA Gestionale Produzione v7.1 (3D Spatial Physics & Haptic Sound Engine)
+const CACHE_NAME = 'mpa-gestionale-v7.1';
 const STATIC_ASSETS = [
   './',
   './index.html',

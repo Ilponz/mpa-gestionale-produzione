@@ -1,24 +1,128 @@
 /**
  * CONTROLLER APPLICATIVO PRINCIPALE (M.P.A. DI MAURIZIO CAVALLARO)
- * Estetica Architetturale Liquid Glass (Vetro Liquido & Frosted Glass B&W).
- * Funzionalità:
- * 1. Barra di Completamento con percentuale in tempo reale per ogni commessa.
- * 2. Transizione Fluida (Slide Smooth) tra Lista Commesse e Parti del Progetto (Telai).
- * 3. Tasto destro (Context Menu) su Commesse e Telai per Modificare o Eliminare.
- * 4. Caricamento File PDF SEMA (con rendering client-side e split pagine/telai automatico).
- * 5. Tutti i Pop-up di Conferma sono finestre a tema Liquid Glass centrate a schermo (zero alert/confirm nativi).
+ * Estetica Architetturale Liquid Glass & Titanium Monochrome B&W.
+ * Zero Template AI - Industrial Precision Woodworking CAD/CAM Software.
+ * 
+ * Moduli Integrati:
+ * 1. SoundEngine: Sintetizzatore audio haptic tattile (Web Audio API nativo).
+ * 2. GSAP 3D Spatial Physics: Transizioni di navigazione con profondità Z e rotazione Y.
+ * 3. Atropos 3D Parallax Tilt: Inclinazione dinamica delle schede con offset multilivello.
+ * 4. Interpolazione Numerica GSAP: Animazione continua e morbida dei contatori percentuali.
+ * 5. Celebration Engine: Particelle silver/titanium al 100% di completamento.
+ * 6. Workstation SEMA CAD: Visualizzatore tavole con Zoom, Pan e modalità High-Contrast Inverted.
+ * 7. Context Menu & Liquid Glass Central Modal: Pop-up di conferma a tema al centro schermo (zero alert/confirm nativi).
+ * 8. PDF.js SEMA Engine: Parsing automatico multi-pagina e split telai con distinta morali.
  */
+
+// ==========================================================================
+// 1. SINTETIZZATORE AUDIO TASSILE (WEB AUDIO API NATIVO)
+// ==========================================================================
+
+class SoundEngine {
+  constructor() {
+    this.enabled = localStorage.getItem('mpa_sound_enabled') !== 'false';
+    this.ctx = null;
+  }
+
+  init() {
+    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  toggle() {
+    this.enabled = !this.enabled;
+    localStorage.setItem('mpa_sound_enabled', this.enabled ? 'true' : 'false');
+    if (this.enabled) this.playTick();
+    return this.enabled;
+  }
+
+  // Clic tattile meccanico ad altissima precisione (toggle morale / tasto rapido)
+  playTick() {
+    if (!this.enabled) return;
+    try {
+      this.init();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(220, this.ctx.currentTime + 0.035);
+      gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.035);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.035);
+    } catch (e) {}
+  }
+
+  // Thud meccanico a bassa frequenza (switch pannello 3D / navigazione sezioni)
+  playSwitch() {
+    if (!this.enabled) return;
+    try {
+      this.init();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(70, this.ctx.currentTime + 0.11);
+      gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.11);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.11);
+    } catch (e) {}
+  }
+
+  // Sequenza di armonici puri al raggiungimento del 100%
+  playSuccess() {
+    if (!this.enabled) return;
+    try {
+      this.init();
+      const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      freqs.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const start = this.ctx.currentTime + idx * 0.065;
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.04, start);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.45);
+      });
+    } catch (e) {}
+  }
+}
+
+// ==========================================================================
+// 2. CONTROLLER APPLICATIVO PRINCIPALE
+// ==========================================================================
 
 class AppController {
   constructor() {
-    this.currentNavLevel = 'projects'; // 'projects' oppure 'components'
+    this.currentNavLevel = 'projects'; // 'projects' (Livello 1) | 'components' (Livello 2)
     this.selectedProjectId = 'proj-1';
-    this.selectedComponentId = null;   // null = vedi sfondo finché non selezioni il primo pezzo
+    this.selectedComponentId = null;   // null = visualizza sfondo HUD finché non si seleziona un pezzo
     this.compSearchQuery = '';
+    
+    // Zoom e Pan CAD Blueprint
     this.zoomLevel = 1.0;
     this.panX = 0;
     this.panY = 0;
     this.isPanning = false;
+    this.isCadInverted = false; // Alto contrasto da officina (Dark CAD Blueprint)
+
+    // Motori Tattili ed Effetti 3D
+    this.sound = new SoundEngine();
+    this.atroposInstances = [];
 
     // File PDF selezionato per nuova commessa o sostituzione
     this.selectedPdfFile = null;
@@ -46,7 +150,6 @@ class AppController {
       }
     });
 
-    // Chiusura menu contestuale cliccando altrove
     window.addEventListener('click', () => {
       this.hideContextMenu();
     });
@@ -64,7 +167,7 @@ class AppController {
     }
   }
 
-  // --- RENDERING GENERALE ---
+  // --- RENDERING GENERALE DELL'INTERFACCIA ---
 
   render() {
     const root = document.getElementById('app-root');
@@ -74,7 +177,9 @@ class AppController {
       ${this.renderHeader()}
       <div class="workspace-layout">
         ${this.renderSidebarNavigator()}
-        ${this.renderMainStage()}
+        <main class="main-stage">
+          ${this.renderMainStageContent()}
+        </main>
       </div>
       ${this.renderStealthAdminButton()}
       ${this.renderContextMenu()}
@@ -82,10 +187,10 @@ class AppController {
     `;
 
     this.bindEvents();
-    this.bindCadZoomEvents();
+    this.initAtroposCards();
   }
 
-  // --- HEADER: SOLO NOME AZIENDA, ZERO SOTTOTITOLO O MENU ---
+  // --- HEADER: SOLO NOME AZIENDA, CONTROLLO AUDIO, OPERATORE, STATO ---
 
   renderHeader() {
     const op = AUTH.activeOperator;
@@ -97,11 +202,18 @@ class AppController {
         </div>
 
         <div class="header-actions">
+          <!-- Tasto Switch Audio Meccanico -->
+          <button class="sound-toggle-btn ${this.sound.enabled ? '' : 'muted'}" id="btn-toggle-sound" title="Attiva/Disattiva Suoni Tattili">
+            ${this.sound.enabled ? 'AUDIO: ON' : 'AUDIO: OFF'}
+          </button>
+
+          <!-- Selettore Operatore Squadra -->
           <div class="operator-box" id="btn-change-operator" title="Gestione / Selezione Operatore">
             <span class="operator-label">OPERATORE:</span>
             <span class="operator-val">${op.name}</span>
           </div>
 
+          <!-- Stato Connessione Locale / Rete -->
           <div id="connection-status" class="connection-status">
             ONLINE
           </div>
@@ -116,7 +228,7 @@ class AppController {
     `;
   }
 
-  // --- BARRA LATERALE NAVIGATRICE A TRANSIZIONE FLUIDA (DUE LIVELLI) ---
+  // --- BARRA LATERALE NAVIGATRICE A TRANSIZIONE 3D SPATIAL (DUE LIVELLI) ---
 
   renderSidebarNavigator() {
     const isProjects = this.currentNavLevel === 'projects';
@@ -137,6 +249,7 @@ class AppController {
     `;
   }
 
+  // CONTENUTO LIVELLO 1: COMMESSE CON ATROPOS 3D TILT E BARRA DI COMPLETAMENTO
   renderProjectsPanelContent() {
     const projects = DB.getProjects(AUTH.isAdmin);
 
@@ -144,7 +257,7 @@ class AppController {
       <div class="panel-header">
         <span class="panel-title">COMMESSE (${projects.length})</span>
         ${AUTH.isAdmin ? `
-          <button class="btn-outline-sm" id="btn-open-new-project">
+          <button class="btn-outline-sm" id="btn-open-new-project" title="Crea nuova commessa da PDF">
             [ + NUOVA ]
           </button>
         ` : ''}
@@ -157,33 +270,41 @@ class AppController {
           const remaining = this.calculateDaysRemaining(proj.deadline);
 
           return `
-            <div class="liquid-glass-card project-item-card ${isSelected ? 'active' : ''}" 
-                 data-select-project-id="${proj.id}" 
-                 data-context-project-id="${proj.id}"
-                 title="Tasto sinistro per aprire · Tasto destro per opzioni">
-              <div class="p-card-top font-mono">
-                <span class="p-card-code">${proj.code}</span>
-                <span class="p-card-deadline">${this.formatDate(proj.deadline)}</span>
-              </div>
-              
-              <div class="p-card-title">${proj.title}</div>
-              <div class="p-card-client font-mono">${proj.client}</div>
+            <div class="atropos atropos-card-wrapper" data-atropos-proj="${proj.id}">
+              <div class="atropos-scale">
+                <div class="atropos-rotate">
+                  <div class="atropos-inner">
+                    <div class="liquid-glass-card project-item-card ${isSelected ? 'active' : ''}" 
+                         data-select-project-id="${proj.id}" 
+                         data-context-project-id="${proj.id}"
+                         title="Tasto sinistro per aprire · Tasto destro per opzioni">
+                      <div class="p-card-top font-mono" data-atropos-offset="2">
+                        <span class="p-card-code">${proj.code}</span>
+                        <span class="p-card-deadline">${this.formatDate(proj.deadline)}</span>
+                      </div>
+                      
+                      <div class="p-card-title" data-atropos-offset="5">${proj.title}</div>
+                      <div class="p-card-client font-mono" data-atropos-offset="3">${proj.client}</div>
 
-              <!-- Barra di completamento con percentuale in tempo reale -->
-              <div class="p-progress-box">
-                <div class="p-progress-track">
-                  <div class="p-progress-fill" style="width: ${progress}%;"></div>
+                      <!-- Barra di completamento con percentuale in tempo reale -->
+                      <div class="p-progress-box" data-atropos-offset="4">
+                        <div class="p-progress-track">
+                          <div class="p-progress-fill" id="proj-progress-bar-${proj.id}" style="width: ${progress}%;"></div>
+                        </div>
+                        <div class="p-progress-val font-mono" id="proj-progress-val-${proj.id}">${progress}%</div>
+                      </div>
+
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;" data-atropos-offset="2">
+                        <span class="status-pill ${this.getStatusClass(proj.status)} font-mono">
+                          ${this.getStatusLabel(proj.status)}
+                        </span>
+                        <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">
+                          ${remaining}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="p-progress-val font-mono">${progress}%</div>
-              </div>
-
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                <span class="status-pill ${this.getStatusClass(proj.status)} font-mono">
-                  ${this.getStatusLabel(proj.status)}
-                </span>
-                <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">
-                  ${remaining}
-                </span>
               </div>
             </div>
           `;
@@ -198,6 +319,7 @@ class AppController {
     `;
   }
 
+  // CONTENUTO LIVELLO 2: PARTI DEL PROGETTO (TELAI) CON TASTO INDIETRO
   renderComponentsPanelContent() {
     const project = DB.getProjectById(this.selectedProjectId);
     if (!project) {
@@ -234,7 +356,7 @@ class AppController {
         ` : ''}
       </div>
 
-      <!-- Intestazione Commessa e Barra Avanzamento -->
+      <!-- Intestazione Commessa e Barra Avanzamento Globale -->
       <div style="padding:14px 18px; border-bottom:var(--glass-border-light); background:rgba(18,21,28,0.4);">
         <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted); text-transform:uppercase;">
           ${project.code} · ${project.client}
@@ -244,9 +366,9 @@ class AppController {
         </div>
         <div class="p-progress-box" style="margin-top:8px;">
           <div class="p-progress-track">
-            <div class="p-progress-fill" style="width: ${progress}%;"></div>
+            <div class="p-progress-fill" id="comp-panel-progress-bar" style="width: ${progress}%;"></div>
           </div>
-          <div class="p-progress-val font-mono">${progress}%</div>
+          <div class="p-progress-val font-mono" id="comp-panel-progress-val">${progress}%</div>
         </div>
       </div>
 
@@ -274,22 +396,30 @@ class AppController {
           const checkedCount = comp.morali ? comp.morali.filter(m => m.checked).length : 0;
 
           return `
-            <div class="liquid-glass-card component-item-card ${isSelected ? 'active' : ''}" 
-                 data-select-component-id="${comp.id}"
-                 data-context-component-id="${comp.id}"
-                 title="Tasto sinistro per aprire · Tasto destro per opzioni">
-              <div class="comp-card-header font-mono">
-                <span class="comp-card-page">PAG. ${comp.pageNumber}</span>
-                <span class="comp-card-code">${comp.code}</span>
-              </div>
+            <div class="atropos atropos-card-wrapper" data-atropos-comp="${comp.id}">
+              <div class="atropos-scale">
+                <div class="atropos-rotate">
+                  <div class="atropos-inner">
+                    <div class="liquid-glass-card component-item-card ${isSelected ? 'active' : ''}" 
+                         data-select-component-id="${comp.id}"
+                         data-context-component-id="${comp.id}"
+                         title="Tasto sinistro per aprire · Tasto destro per opzioni">
+                      <div class="comp-card-header font-mono" data-atropos-offset="3">
+                        <span class="comp-card-page">PAG. ${comp.pageNumber}</span>
+                        <span class="comp-card-code">${comp.code}</span>
+                      </div>
 
-              <div class="comp-card-title">${comp.title}</div>
+                      <div class="comp-card-title" data-atropos-offset="5">${comp.title}</div>
 
-              <div class="comp-card-meta font-mono">
-                <span style="color:var(--text-secondary);">${checkedCount}/${moraliCount} PEZZI</span>
-                <span class="status-pill ${this.getStatusClass(comp.cutStatus)}" style="padding:2px 6px;">
-                  TAGLIO: ${comp.cutStatus.toUpperCase()}
-                </span>
+                      <div class="comp-card-meta font-mono" data-atropos-offset="2">
+                        <span style="color:var(--text-secondary);">${checkedCount}/${moraliCount} PEZZI</span>
+                        <span class="status-pill ${this.getStatusClass(comp.cutStatus)}" style="padding:2px 6px;">
+                          TAGLIO: ${comp.cutStatus.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           `;
@@ -300,31 +430,29 @@ class AppController {
 
   // --- SPAZIO PRINCIPALE: SFONDO FINCHÉ NON SELEZIONI IL PRIMO PEZZO ---
 
-  renderMainStage() {
+  renderMainStageContent() {
     const project = DB.getProjectById(this.selectedProjectId);
 
-    // Se nessun componente è selezionato: VEDI SFONDO con raffinata HUD Glass
+    // Se nessun componente è selezionato: VEDI SFONDO con HUD Glass
     if (!this.selectedComponentId || !project) {
       return `
-        <main class="main-stage">
-          <div class="empty-stage-hud liquid-glass">
-            <div class="hud-tag font-mono">[ ARCHIVIO SEMA · VANO PRODUZIONE ]</div>
-            <h2 class="hud-title font-display">${project ? project.title : 'SELEZIONA UNA COMMESSA'}</h2>
-            <p class="hud-desc font-mono">
-              ${project 
-                ? 'Seleziona un telaio dalla lista a sinistra per aprire la tavola tecnica CAD e la distinta di taglio morali.' 
-                : 'Clicca su una delle commesse a sinistra per visualizzare le parti e avviare la lavorazione.'}
-            </p>
+        <div class="empty-stage-hud liquid-glass">
+          <div class="hud-tag font-mono">[ ARCHIVIO SEMA · VANO PRODUZIONE ]</div>
+          <h2 class="hud-title font-display">${project ? project.title : 'SELEZIONA UNA COMMESSA'}</h2>
+          <p class="hud-desc font-mono">
+            ${project 
+              ? 'Seleziona un telaio dalla lista a sinistra per aprire la tavola tecnica CAD e la distinta di taglio morali.' 
+              : 'Clicca su una delle commesse a sinistra per visualizzare le parti e avviare la lavorazione.'}
+          </p>
 
-            ${project ? `
-              <div class="hud-meta-row font-mono">
-                <span>CLIENTE: ${project.client}</span>
-                <span>CONSEGNA: ${this.formatDate(project.deadline)}</span>
-                <span>AVANZAMENTO: ${DB.calculateProjectProgress(project)}%</span>
-              </div>
-            ` : ''}
-          </div>
-        </main>
+          ${project ? `
+            <div class="hud-meta-row font-mono">
+              <span>CLIENTE: ${project.client}</span>
+              <span>CONSEGNA: ${this.formatDate(project.deadline)}</span>
+              <span>AVANZAMENTO: ${DB.calculateProjectProgress(project)}%</span>
+            </div>
+          ` : ''}
+        </div>
       `;
     }
 
@@ -332,11 +460,9 @@ class AppController {
     const comp = DB.getComponent(this.selectedProjectId, this.selectedComponentId);
     if (!comp) {
       return `
-        <main class="main-stage">
-          <div class="empty-stage-hud liquid-glass">
-            <p class="hud-desc font-mono">Telaio non trovato.</p>
-          </div>
-        </main>
+        <div class="empty-stage-hud liquid-glass">
+          <p class="hud-desc font-mono">Telaio non trovato.</p>
+        </div>
       `;
     }
 
@@ -345,104 +471,103 @@ class AppController {
     const totalCount = morali.length;
 
     return `
-      <main class="main-stage">
-        <section class="liquid-glass component-workstation">
-          <!-- Barra Superiore della Workstation Telaio -->
-          <div class="workstation-header">
-            <div class="workstation-title-box">
-              <div class="workstation-page-tag font-mono">
-                PAGINA ${comp.pageNumber} DI ${project.totalComponents || project.components.length} · TAVOLA ${comp.code}
+      <section class="liquid-glass component-workstation">
+        <!-- Barra Superiore della Workstation Telaio -->
+        <div class="workstation-header">
+          <div class="workstation-title-box">
+            <div class="workstation-page-tag font-mono">
+              PAGINA ${comp.pageNumber} DI ${project.totalComponents || project.components.length} · TAVOLA ${comp.code}
+            </div>
+            <div class="workstation-main-title">${comp.title}</div>
+            ${comp.note ? `
+              <div style="font-size:11px; font-family:var(--font-mono); color:#FFFFFF; background:var(--glass-subtle); border:var(--glass-border-light); padding:4px 8px; margin-top:4px;">
+                NOTA OFFICINA: ${comp.note}
               </div>
-              <div class="workstation-main-title">${comp.title}</div>
-              ${comp.note ? `
-                <div style="font-size:11px; font-family:var(--font-mono); color:#FFFFFF; background:var(--glass-subtle); border:var(--glass-border-light); padding:4px 8px; margin-top:4px;">
-                  NOTA OFFICINA: ${comp.note}
+            ` : ''}
+          </div>
+
+          <div class="workstation-actions">
+            <!-- Azione Rapida Taglio -->
+            <button class="btn-solid-white font-mono" data-action-toggle-cut="${comp.id}" style="${comp.cutStatus === 'completed' ? 'background:#FFFFFF; color:#000000;' : 'background:transparent; color:#FFFFFF; border:1px solid #FFFFFF;'}">
+              TAGLIO: ${comp.cutStatus === 'completed' ? 'COMPLETATO' : 'IN CORSO (SEGNA FATTO)'}
+            </button>
+
+            <!-- Azione Rapida Montaggio Banco -->
+            <button class="btn-outline-white font-mono" data-action-toggle-assembly="${comp.id}" style="${comp.assemblyStatus === 'completed' ? 'background:#FFFFFF; color:#000000;' : ''}">
+              MONTAGGIO: ${comp.assemblyStatus === 'completed' ? 'COMPLETATO' : 'BANCO (SEGNA FATTO)'}
+            </button>
+
+            <!-- Pulsante per Chiudere il Telaio e Tornare allo Sfondo -->
+            <button class="btn-outline-sm font-mono" id="btn-close-workstation" title="Chiudi telaio e torna allo sfondo">
+              ✕ CHIUDI
+            </button>
+          </div>
+        </div>
+
+        <!-- Griglia Interna: Disegno CAD a Sinistra, Distinta a Destra -->
+        <div class="workstation-grid">
+          <!-- Finestra Tavola Tecnica SEMA CAD -->
+          <div class="workstation-cad-box ${this.isCadInverted ? 'cad-inverted' : ''}" id="cad-drawing-container">
+            <img 
+              id="cad-drawing-preview" 
+              src="${comp.image}" 
+              alt="${comp.title}" 
+              style="max-width:100%; max-height:520px; object-fit:contain; transform: scale(${this.zoomLevel}) translate(${this.panX}px, ${this.panY}px); transition: transform 120ms ease; pointer-events:none;" 
+            />
+
+            <!-- Controlli Zoom e Modalità CAD Inverted -->
+            <div class="cad-zoom-bar">
+              <button class="zoom-btn" id="btn-zoom-in" title="Ingrandisci">[ + ]</button>
+              <button class="zoom-btn" id="btn-zoom-out" title="Riduci">[ - ]</button>
+              <button class="zoom-btn" id="btn-zoom-reset" title="Reimposta 1:1">[ 1:1 ]</button>
+              <button class="zoom-btn" id="btn-zoom-invert" title="Inverti Contrasto CAD Blueprint" style="${this.isCadInverted ? 'background:#FFFFFF; color:#000000;' : ''}">[ CAD INV ]</button>
+              <button class="zoom-btn" id="btn-zoom-fullscreen" title="Schermo Intero">[ ⛶ ]</button>
+            </div>
+          </div>
+
+          <!-- Distinta Morali e Spunta Pezzi in Millimetri -->
+          <div class="workstation-morali-box">
+            <div class="section-title">
+              <span>DISTINTA MORALI & PEZZI</span>
+              <span class="font-mono" id="workstation-morali-status-text" style="font-size:11px; color:var(--text-secondary);">
+                ${checkedCount}/${totalCount} PEZZI · ${totalCount > 0 && checkedCount === totalCount ? 'TUTTI TAGLIATI' : 'IN LAVORAZIONE'}
+              </span>
+            </div>
+
+            <div class="morali-list" style="flex:1; overflow-y:auto; max-height:440px;">
+              ${morali.length === 0 ? `
+                <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">
+                  Nessun pezzo associato a questa tavola.
                 </div>
-              ` : ''}
-            </div>
-
-            <div class="workstation-actions">
-              <!-- Azione Rapida Taglio -->
-              <button class="btn-solid-white font-mono" data-action-toggle-cut="${comp.id}" style="${comp.cutStatus === 'completed' ? 'background:#FFFFFF; color:#000000;' : 'background:transparent; color:#FFFFFF; border:1px solid #FFFFFF;'}">
-                TAGLIO: ${comp.cutStatus === 'completed' ? 'COMPLETATO' : 'IN CORSO (SEGNA FATTO)'}
-              </button>
-
-              <!-- Azione Rapida Montaggio Banco -->
-              <button class="btn-outline-white font-mono" data-action-toggle-assembly="${comp.id}" style="${comp.assemblyStatus === 'completed' ? 'background:#FFFFFF; color:#000000;' : ''}">
-                MONTAGGIO: ${comp.assemblyStatus === 'completed' ? 'COMPLETATO' : 'BANCO (SEGNA FATTO)'}
-              </button>
-
-              <!-- Pulsante per Chiudere il Telaio e Tornare allo Sfondo -->
-              <button class="btn-outline-sm font-mono" id="btn-close-workstation" title="Chiudi telaio e torna allo sfondo">
-                ✕ CHIUDI
-              </button>
-            </div>
-          </div>
-
-          <!-- Griglia Interna: Disegno CAD a Sinistra, Distinta a Destra -->
-          <div class="workstation-grid">
-            <!-- Finestra Tavola Tecnica SEMA CAD -->
-            <div class="workstation-cad-box" id="cad-drawing-container">
-              <img 
-                id="cad-drawing-preview" 
-                src="${comp.image}" 
-                alt="${comp.title}" 
-                style="max-width:100%; max-height:520px; object-fit:contain; transform: scale(${this.zoomLevel}) translate(${this.panX}px, ${this.panY}px); transition: transform 120ms ease; pointer-events:none;" 
-              />
-
-              <!-- Controlli Zoom CAD Liquid Glass -->
-              <div class="cad-zoom-bar">
-                <button class="zoom-btn" id="btn-zoom-in" title="Ingrandisci">[ + ]</button>
-                <button class="zoom-btn" id="btn-zoom-out" title="Riduci">[ - ]</button>
-                <button class="zoom-btn" id="btn-zoom-reset" title="Reimposta">[ 1:1 ]</button>
-                <button class="zoom-btn" id="btn-zoom-fullscreen" title="Schermo Intero">[ ⛶ ]</button>
-              </div>
-            </div>
-
-            <!-- Distinta Morali e Spunta Pezzi in Millimetri -->
-            <div class="workstation-morali-box">
-              <div class="section-title">
-                <span>DISTINTA MORALI & PEZZI (${checkedCount}/${totalCount})</span>
-                <span class="font-mono" style="font-size:11px; color:var(--text-secondary);">
-                  ${totalCount > 0 && checkedCount === totalCount ? 'TUTTI TAGLIATI' : 'IN LAVORAZIONE'}
-                </span>
-              </div>
-
-              <div class="morali-list" style="flex:1; overflow-y:auto; max-height:440px;">
-                ${morali.length === 0 ? `
-                  <div style="padding:24px; text-align:center; color:var(--text-muted); font-size:11px; font-family:var(--font-mono);">
-                    Nessun pezzo associato a questa tavola.
+              ` : morali.map(m => `
+                <div class="moral-item ${m.checked ? 'checked' : ''}" data-moral-comp-id="${comp.id}" data-moral-id="${m.id}">
+                  <div class="moral-checkbox">
+                    ${m.checked ? '✓' : ''}
                   </div>
-                ` : morali.map(m => `
-                  <div class="moral-item ${m.checked ? 'checked' : ''}" data-moral-comp-id="${comp.id}" data-moral-id="${m.id}">
-                    <div class="moral-checkbox">
-                      ${m.checked ? '✓' : ''}
-                    </div>
 
-                    <div class="moral-details font-mono">
-                      <span class="moral-qty">NR ${m.qty}</span>
-                      <span class="moral-len">L. ${m.length} MM</span>
-                      <span class="moral-desc">${m.desc}</span>
-                    </div>
-
-                    ${AUTH.isAdmin ? `
-                      <button class="moral-delete-btn" data-delete-moral-comp-id="${comp.id}" data-delete-moral-id="${m.id}" title="Elimina pezzo">
-                        [X]
-                      </button>
-                    ` : ''}
+                  <div class="moral-details font-mono">
+                    <span class="moral-qty">NR ${m.qty}</span>
+                    <span class="moral-len">L. ${m.length} MM</span>
+                    <span class="moral-desc">${m.desc}</span>
                   </div>
-                `).join('')}
-              </div>
 
-              ${AUTH.isAdmin ? `
-                <button class="btn-add-moral" data-add-moral-comp-id="${comp.id}">
-                  + AGGIUNGI MORALE A MATITA
-                </button>
-              ` : ''}
+                  ${AUTH.isAdmin ? `
+                    <button class="moral-delete-btn" data-delete-moral-comp-id="${comp.id}" data-delete-moral-id="${m.id}" title="Elimina pezzo">
+                      [X]
+                    </button>
+                  ` : ''}
+                </div>
+              `).join('')}
             </div>
+
+            ${AUTH.isAdmin ? `
+              <button class="btn-add-moral" data-add-moral-comp-id="${comp.id}">
+                + AGGIUNGI MORALE A MATITA
+              </button>
+            ` : ''}
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
     `;
   }
 
@@ -465,7 +590,6 @@ class AppController {
       `).join('')}
     `;
 
-    // Posizionamento entro i margini dello schermo
     menu.style.display = 'flex';
     const menuWidth = 240;
     const menuHeight = items.length * 38 + 36;
@@ -475,7 +599,14 @@ class AppController {
     menu.style.left = `${Math.max(10, posX)}px`;
     menu.style.top = `${Math.max(10, posY)}px`;
 
-    // Associazione azioni
+    if (typeof gsap !== 'undefined') {
+      gsap.fromTo(menu,
+        { opacity: 0, scale: 0.94, y: -4 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.16, ease: 'power2.out' }
+      );
+    }
+
+    // Associazione eventi
     items.forEach((item, idx) => {
       const el = menu.querySelector(`[data-menu-action="${idx}"]`);
       if (el) {
@@ -520,42 +651,395 @@ class AppController {
       confirmBtn.style.color = '#000000';
     }
 
-    // Clone per pulire vecchi listener
+    const card = modal.querySelector('.confirm-popup-card');
+
     const newConfirm = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
 
     const newCancel = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
 
+    const closeModalAnimated = (callback) => {
+      if (typeof gsap !== 'undefined' && card) {
+        gsap.to(card, {
+          opacity: 0,
+          scale: 0.95,
+          duration: 0.18,
+          ease: 'power2.in',
+          onComplete: () => {
+            modal.style.display = 'none';
+            if (callback) callback();
+          }
+        });
+      } else {
+        modal.style.display = 'none';
+        if (callback) callback();
+      }
+    };
+
     newConfirm.addEventListener('click', () => {
-      modal.style.display = 'none';
-      if (onConfirm) onConfirm();
+      closeModalAnimated(onConfirm);
     });
 
     newCancel.addEventListener('click', () => {
-      modal.style.display = 'none';
+      closeModalAnimated();
     });
 
     modal.style.display = 'flex';
+    if (typeof gsap !== 'undefined' && card) {
+      gsap.fromTo(card,
+        { opacity: 0, scale: 0.94, rotateX: -6, y: -10 },
+        { opacity: 1, scale: 1, rotateX: 0, y: 0, duration: 0.32, ease: 'power3.out' }
+      );
+    }
   }
 
-  // --- EVENT BINDING ---
+  // ==========================================================================
+  // 3. TRANSIZIONI FLUIDE E 3D SWITCHING CHOREOGRAPHY
+  // ==========================================================================
+
+  switchToComponents(projectId) {
+    this.sound.playSwitch();
+    this.selectedProjectId = projectId;
+    this.currentNavLevel = 'components';
+    this.selectedComponentId = null;
+    this.zoomLevel = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+
+    const projectsPanel = document.querySelector('.nav-panel-projects');
+    const componentsPanel = document.querySelector('.nav-panel-components');
+    const mainStage = document.querySelector('.main-stage');
+
+    if (projectsPanel && componentsPanel) {
+      componentsPanel.innerHTML = this.renderComponentsPanelContent();
+
+      if (typeof gsap !== 'undefined') {
+        gsap.to(projectsPanel, {
+          x: -75,
+          rotateY: -22,
+          z: -90,
+          opacity: 0,
+          filter: 'blur(4px)',
+          duration: 0.42,
+          ease: 'power3.inOut',
+          onComplete: () => {
+            projectsPanel.classList.remove('state-active');
+            projectsPanel.classList.add('state-hidden');
+          }
+        });
+
+        componentsPanel.classList.remove('state-hidden');
+        componentsPanel.classList.add('state-active');
+        gsap.fromTo(componentsPanel,
+          { x: 75, rotateY: 22, z: -90, opacity: 0, filter: 'blur(4px)' },
+          { x: 0, rotateY: 0, z: 0, opacity: 1, filter: 'blur(0px)', duration: 0.48, ease: 'power3.out' }
+        );
+
+        gsap.fromTo('.component-item-card',
+          { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, stagger: 0.035, duration: 0.35, delay: 0.1, ease: 'power2.out' }
+        );
+      } else {
+        projectsPanel.classList.remove('state-active');
+        projectsPanel.classList.add('state-hidden');
+        componentsPanel.classList.remove('state-hidden');
+        componentsPanel.classList.add('state-active');
+      }
+    }
+
+    if (mainStage) {
+      mainStage.innerHTML = this.renderMainStageContent();
+      if (typeof gsap !== 'undefined') {
+        gsap.fromTo('.empty-stage-hud',
+          { opacity: 0, scale: 0.96, y: 15 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'power3.out' }
+        );
+      }
+    }
+
+    this.initAtroposCards();
+    this.bindComponentPanelEvents();
+    this.bindBackBtnEvent();
+  }
+
+  switchToProjects() {
+    this.sound.playSwitch();
+    this.currentNavLevel = 'projects';
+
+    const projectsPanel = document.querySelector('.nav-panel-projects');
+    const componentsPanel = document.querySelector('.nav-panel-components');
+
+    if (projectsPanel && componentsPanel) {
+      if (typeof gsap !== 'undefined') {
+        gsap.to(componentsPanel, {
+          x: 75,
+          rotateY: 22,
+          z: -90,
+          opacity: 0,
+          filter: 'blur(4px)',
+          duration: 0.42,
+          ease: 'power3.inOut',
+          onComplete: () => {
+            componentsPanel.classList.remove('state-active');
+            componentsPanel.classList.add('state-hidden');
+          }
+        });
+
+        projectsPanel.classList.remove('state-hidden');
+        projectsPanel.classList.add('state-active');
+        gsap.fromTo(projectsPanel,
+          { x: -75, rotateY: -22, z: -90, opacity: 0, filter: 'blur(4px)' },
+          { x: 0, rotateY: 0, z: 0, opacity: 1, filter: 'blur(0px)', duration: 0.48, ease: 'power3.out' }
+        );
+
+        gsap.fromTo('.project-item-card',
+          { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, stagger: 0.035, duration: 0.35, delay: 0.1, ease: 'power2.out' }
+        );
+      } else {
+        componentsPanel.classList.remove('state-active');
+        componentsPanel.classList.add('state-hidden');
+        projectsPanel.classList.remove('state-hidden');
+        projectsPanel.classList.add('state-active');
+      }
+    }
+
+    this.initAtroposCards();
+  }
+
+  selectComponent(compId) {
+    this.sound.playSwitch();
+    this.selectedComponentId = compId;
+    this.zoomLevel = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+
+    // Aggiorna stato attivo nella lista telai
+    document.querySelectorAll('.component-item-card').forEach(c => {
+      if (c.dataset.selectComponentId === compId) {
+        c.classList.add('active');
+      } else {
+        c.classList.remove('active');
+      }
+    });
+
+    const mainStage = document.querySelector('.main-stage');
+    if (mainStage) {
+      mainStage.innerHTML = this.renderMainStageContent();
+
+      if (typeof gsap !== 'undefined') {
+        gsap.fromTo('.component-workstation',
+          { opacity: 0, rotateX: 7, z: -45, y: 22 },
+          { opacity: 1, rotateX: 0, z: 0, y: 0, duration: 0.52, ease: 'power3.out' }
+        );
+        gsap.fromTo('.workstation-cad-box',
+          { opacity: 0, scale: 0.98 },
+          { opacity: 1, scale: 1, duration: 0.45, delay: 0.08, ease: 'power2.out' }
+        );
+        gsap.fromTo('.moral-item',
+          { opacity: 0, x: 20 },
+          { opacity: 1, x: 0, stagger: 0.035, duration: 0.35, delay: 0.15, ease: 'power2.out' }
+        );
+      }
+
+      this.bindCadZoomEvents();
+      this.bindWorkstationEvents();
+    }
+  }
+
+  closeWorkstation() {
+    this.sound.playSwitch();
+    this.selectedComponentId = null;
+
+    document.querySelectorAll('.component-item-card').forEach(c => c.classList.remove('active'));
+
+    const mainStage = document.querySelector('.main-stage');
+    if (mainStage) {
+      if (typeof gsap !== 'undefined') {
+        gsap.to('.component-workstation', {
+          opacity: 0,
+          rotateX: -6,
+          y: -15,
+          duration: 0.32,
+          ease: 'power2.in',
+          onComplete: () => {
+            mainStage.innerHTML = this.renderMainStageContent();
+            gsap.fromTo('.empty-stage-hud',
+              { opacity: 0, scale: 0.96 },
+              { opacity: 1, scale: 1, duration: 0.4, ease: 'power3.out' }
+            );
+          }
+        });
+      } else {
+        mainStage.innerHTML = this.renderMainStageContent();
+      }
+    }
+  }
+
+  // --- SPUNTA MORALE & AGGIORNAMENTO DINAMICO DEI CONTATORI IN TEMPO REALE ---
+
+  toggleMoral(compId, moralId) {
+    this.sound.playTick();
+    DB.toggleMoral(this.selectedProjectId, compId, moralId);
+
+    const comp = DB.getComponent(this.selectedProjectId, compId);
+    const proj = DB.getProjectById(this.selectedProjectId);
+    if (!comp || !proj) return;
+
+    // Aggiorna l'elemento riga morale senza distruggere zoom/pan CAD
+    const item = document.querySelector(`[data-moral-comp-id="${compId}"][data-moral-id="${moralId}"]`);
+    if (item) {
+      const moral = comp.morali.find(m => m.id === moralId);
+      if (moral) {
+        if (moral.checked) {
+          item.classList.add('checked');
+          const chk = item.querySelector('.moral-checkbox');
+          if (chk) chk.textContent = '✓';
+        } else {
+          item.classList.remove('checked');
+          const chk = item.querySelector('.moral-checkbox');
+          if (chk) chk.textContent = '';
+        }
+      }
+    }
+
+    // Aggiorna conteggio distinta nella workstation
+    const morali = comp.morali || [];
+    const checkedCount = morali.filter(m => m.checked).length;
+    const totalCount = morali.length;
+    const statusEl = document.getElementById('workstation-morali-status-text');
+    if (statusEl) {
+      statusEl.textContent = `${checkedCount}/${totalCount} PEZZI · ${totalCount > 0 && checkedCount === totalCount ? 'TUTTI TAGLIATI' : 'IN LAVORAZIONE'}`;
+    }
+
+    // Aggiorna conteggio scheda componente nella barra sinistra
+    const compCard = document.querySelector(`.component-item-card[data-select-component-id="${compId}"]`);
+    if (compCard) {
+      const countMeta = compCard.querySelector('.comp-card-meta span:first-child');
+      if (countMeta) countMeta.textContent = `${checkedCount}/${totalCount} PEZZI`;
+    }
+
+    // Ricalcola e anima la barra e percentuale della commessa
+    const progress = DB.calculateProjectProgress(proj);
+    this.updateProjectProgressBar(this.selectedProjectId, progress);
+
+    // Celebrazione particelle al completamento!
+    if (totalCount > 0 && checkedCount === totalCount) {
+      if (progress === 100) {
+        this.celebrateCompletion(true); // Commessa al 100%
+      } else {
+        this.celebrateCompletion(false); // Telaio singolo completato
+      }
+    }
+  }
+
+  updateProjectProgressBar(projId, targetPercent) {
+    // Aggiorna Livello 1 (Lista Commesse)
+    const barL1 = document.getElementById(`proj-progress-bar-${projId}`);
+    if (barL1) barL1.style.width = `${targetPercent}%`;
+    const valL1 = document.getElementById(`proj-progress-val-${projId}`);
+    if (valL1) this.animateCounter(valL1, targetPercent);
+
+    // Aggiorna Livello 2 (Header Telai Commessa Attiva)
+    const barL2 = document.getElementById('comp-panel-progress-bar');
+    if (barL2) barL2.style.width = `${targetPercent}%`;
+    const valL2 = document.getElementById('comp-panel-progress-val');
+    if (valL2) this.animateCounter(valL2, targetPercent);
+  }
+
+  animateCounter(el, target) {
+    if (!el) return;
+    if (typeof gsap === 'undefined') {
+      el.textContent = `${target}%`;
+      return;
+    }
+    const current = parseInt(el.textContent, 10) || 0;
+    const obj = { val: current };
+    gsap.to(obj, {
+      val: target,
+      duration: 0.5,
+      ease: 'power2.out',
+      onUpdate: () => {
+        el.textContent = `${Math.round(obj.val)}%`;
+      }
+    });
+  }
+
+  celebrateCompletion(isProjectTotal = false) {
+    this.sound.playSuccess();
+    if (typeof confetti === 'function') {
+      confetti({
+        particleCount: isProjectTotal ? 90 : 45,
+        spread: isProjectTotal ? 80 : 50,
+        origin: { y: 0.75 },
+        colors: ['#FFFFFF', '#E5E7EB', '#9CA3AF', '#4B5563', '#111827'] // Stile Architetturale Silver & Graphite B&W
+      });
+    }
+  }
+
+  // --- INIZIALIZZAZIONE ATROPOS 3D TILT CARDS ---
+
+  initAtroposCards() {
+    if (this.atroposInstances && this.atroposInstances.length) {
+      this.atroposInstances.forEach(inst => {
+        try { inst.destroy(); } catch (e) {}
+      });
+    }
+    this.atroposInstances = [];
+
+    if (typeof Atropos === 'undefined') return;
+
+    document.querySelectorAll('.atropos-card-wrapper').forEach(el => {
+      try {
+        const inst = Atropos({
+          el: el,
+          activeOffset: 24,
+          shadow: false,
+          highlight: true,
+          rotateTouch: 'scroll-y',
+          rotateXMax: 10,
+          rotateYMax: 10
+        });
+        this.atroposInstances.push(inst);
+      } catch (err) {
+        console.warn('Atropos init warning:', err);
+      }
+    });
+  }
+
+  // ==========================================================================
+  // 4. EVENT BINDING & GESTIONE INTERAZIONI
+  // ==========================================================================
 
   bindEvents() {
-    // Clic su Commessa: transizione a componenti
+    // Interruttore Audio Feedback
+    const btnSound = document.getElementById('btn-toggle-sound');
+    if (btnSound) {
+      btnSound.addEventListener('click', () => {
+        const enabled = this.sound.toggle();
+        btnSound.className = `sound-toggle-btn ${enabled ? '' : 'muted'}`;
+        btnSound.textContent = enabled ? 'AUDIO: ON' : 'AUDIO: OFF';
+      });
+    }
+
+    this.bindProjectCardsEvents();
+    this.bindComponentPanelEvents();
+    this.bindBackBtnEvent();
+    this.bindCadZoomEvents();
+    this.bindWorkstationEvents();
+    this.bindAdminAndModalsEvents();
+  }
+
+  bindProjectCardsEvents() {
+    // Clic su Commessa: transizione fluida 3D a telai
     document.querySelectorAll('[data-select-project-id]').forEach(card => {
       card.addEventListener('click', () => {
         const projId = card.dataset.selectProjectId;
-        this.selectedProjectId = projId;
-        this.currentNavLevel = 'components';
-        this.selectedComponentId = null; // Mostra sfondo finché non seleziona pezzo
-        this.zoomLevel = 1.0;
-        this.panX = 0;
-        this.panY = 0;
-        this.render();
+        this.switchToComponents(projId);
       });
 
-      // Tasto Destro su Commessa (Modifica / Cancella / Sostituisci PDF)
+      // Tasto Destro su Commessa (Modifica / Sostituisci PDF / Elimina)
       card.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -595,27 +1079,33 @@ class AppController {
       });
     });
 
-    // Pulsante per Tornare alla Sezione Antecedente (Commesse)
+    // Timesheet
+    const timesheetBtn = document.getElementById('btn-open-timesheet-modal');
+    if (timesheetBtn) {
+      timesheetBtn.addEventListener('click', () => {
+        document.getElementById('modal-timesheet').style.display = 'flex';
+      });
+    }
+  }
+
+  bindBackBtnEvent() {
     const backBtn = document.getElementById('btn-back-to-projects');
     if (backBtn) {
       backBtn.addEventListener('click', () => {
-        this.currentNavLevel = 'projects';
-        this.render();
+        this.switchToProjects();
       });
     }
+  }
 
-    // Clic su un Pezzo / Telaio: viene fuori nello spazio vuoto la sezione del componente
+  bindComponentPanelEvents() {
+    // Clic su un Telaio: carica la workstation nello spazio vuoto
     document.querySelectorAll('[data-select-component-id]').forEach(card => {
       card.addEventListener('click', () => {
         const compId = card.dataset.selectComponentId;
-        this.selectedComponentId = compId;
-        this.zoomLevel = 1.0;
-        this.panX = 0;
-        this.panY = 0;
-        this.render();
+        this.selectComponent(compId);
       });
 
-      // Tasto Destro su Telaio (Rinomina / Elimina Telaio)
+      // Tasto Destro su Telaio
       card.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -642,7 +1132,7 @@ class AppController {
                   if (this.selectedComponentId === compId) {
                     this.selectedComponentId = null;
                   }
-                  this.render();
+                  this.switchToComponents(this.selectedProjectId);
                 }
               });
             }
@@ -651,41 +1141,55 @@ class AppController {
       });
     });
 
-    // Pulsante Chiudi Workstation (torna allo sfondo)
-    const closeWorkstationBtn = document.getElementById('btn-close-workstation');
-    if (closeWorkstationBtn) {
-      closeWorkstationBtn.addEventListener('click', () => {
-        this.selectedComponentId = null;
-        this.render();
-      });
-    }
-
     // Filtro Ricerca Telai
     const filterInput = document.getElementById('input-filter-components');
     if (filterInput) {
       filterInput.addEventListener('input', (e) => {
         this.compSearchQuery = e.target.value;
-        this.render();
-        const newInput = document.getElementById('input-filter-components');
-        if (newInput) {
-          newInput.focus();
-          newInput.setSelectionRange(newInput.value.length, newInput.value.length);
+        const compPanel = document.querySelector('.nav-panel-components');
+        if (compPanel) {
+          compPanel.innerHTML = this.renderComponentsPanelContent();
+          this.initAtroposCards();
+          this.bindComponentPanelEvents();
+          this.bindBackBtnEvent();
+          const newInput = document.getElementById('input-filter-components');
+          if (newInput) {
+            newInput.focus();
+            newInput.setSelectionRange(newInput.value.length, newInput.value.length);
+          }
         }
       });
     }
 
-    // Spunta Checkbox Morali (con ricalcolo % in tempo reale)
+    // Modifica Commessa da Header Livello 2
+    const editProjBtn = document.getElementById('btn-edit-active-proj');
+    if (editProjBtn) {
+      editProjBtn.addEventListener('click', () => {
+        this.openEditProjectModal(this.selectedProjectId);
+      });
+    }
+  }
+
+  bindWorkstationEvents() {
+    // Chiudi Workstation
+    const closeWorkstationBtn = document.getElementById('btn-close-workstation');
+    if (closeWorkstationBtn) {
+      closeWorkstationBtn.addEventListener('click', () => {
+        this.closeWorkstation();
+      });
+    }
+
+    // Spunta Checkbox Morali
     document.querySelectorAll('[data-moral-comp-id]').forEach(el => {
       el.addEventListener('click', (e) => {
         if (e.target.closest('.moral-delete-btn')) return;
         const compId = el.dataset.moralCompId;
         const moralId = el.dataset.moralId;
-        DB.toggleMoral(this.selectedProjectId, compId, moralId);
-        this.render();
+        this.toggleMoral(compId, moralId);
       });
     });
 
-    // Eliminazione Morale (Michele Admin) con pop-up centrale a tema
+    // Eliminazione Morale con Conferma a Tema
     document.querySelectorAll('[data-delete-moral-comp-id]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -699,7 +1203,7 @@ class AppController {
           isDestructive: true,
           onConfirm: () => {
             DB.deleteMoral(this.selectedProjectId, compId, moralId);
-            this.render();
+            this.selectComponent(compId);
           }
         });
       });
@@ -711,9 +1215,10 @@ class AppController {
         const compId = btn.dataset.actionToggleCut;
         const comp = DB.getComponent(this.selectedProjectId, compId);
         if (!comp) return;
+        this.sound.playTick();
         const nextStatus = comp.cutStatus === 'completed' ? 'todo' : 'completed';
         DB.updateOperationStatus(this.selectedProjectId, compId, 'cut', nextStatus, AUTH.activeOperator.name);
-        this.render();
+        this.selectComponent(compId);
       });
     });
 
@@ -723,13 +1228,96 @@ class AppController {
         const compId = btn.dataset.actionToggleAssembly;
         const comp = DB.getComponent(this.selectedProjectId, compId);
         if (!comp) return;
+        this.sound.playTick();
         const nextStatus = comp.assemblyStatus === 'completed' ? 'todo' : 'completed';
         DB.updateOperationStatus(this.selectedProjectId, compId, 'assembly', nextStatus, AUTH.activeOperator.name);
-        this.render();
+        this.selectComponent(compId);
       });
     });
 
-    // Dropzone Caricamento PDF (Nuova Commessa)
+    // Aggiungi Morale
+    document.querySelectorAll('[data-add-moral-comp-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.targetMoralCompId = btn.dataset.addMoralCompId;
+        document.getElementById('modal-add-moral').style.display = 'flex';
+      });
+    });
+  }
+
+  // --- CONTROLLI ZOOM, PAN & CAD DARK BLUEPRINT INVERTED MODE ---
+
+  bindCadZoomEvents() {
+    const img = document.getElementById('cad-drawing-preview');
+    const container = document.getElementById('cad-drawing-container');
+    if (!img || !container) return;
+
+    const zoomInBtn = document.getElementById('btn-zoom-in');
+    const zoomOutBtn = document.getElementById('btn-zoom-out');
+    const zoomResetBtn = document.getElementById('btn-zoom-reset');
+    const zoomInvertBtn = document.getElementById('btn-zoom-invert');
+    const zoomFullscreenBtn = document.getElementById('btn-zoom-fullscreen');
+
+    const updateTransform = () => {
+      img.style.transform = `scale(${this.zoomLevel}) translate(${this.panX}px, ${this.panY}px)`;
+    };
+
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener('click', () => {
+        this.sound.playTick();
+        this.zoomLevel = Math.min(4.0, this.zoomLevel + 0.25);
+        updateTransform();
+      });
+    }
+
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener('click', () => {
+        this.sound.playTick();
+        this.zoomLevel = Math.max(0.7, this.zoomLevel - 0.25);
+        updateTransform();
+      });
+    }
+
+    if (zoomResetBtn) {
+      zoomResetBtn.addEventListener('click', () => {
+        this.sound.playTick();
+        this.zoomLevel = 1.0;
+        this.panX = 0;
+        this.panY = 0;
+        updateTransform();
+      });
+    }
+
+    if (zoomInvertBtn) {
+      zoomInvertBtn.addEventListener('click', () => {
+        this.sound.playTick();
+        this.isCadInverted = !this.isCadInverted;
+        if (this.isCadInverted) {
+          container.classList.add('cad-inverted');
+          zoomInvertBtn.style.background = '#FFFFFF';
+          zoomInvertBtn.style.color = '#000000';
+        } else {
+          container.classList.remove('cad-inverted');
+          zoomInvertBtn.style.background = 'transparent';
+          zoomInvertBtn.style.color = 'var(--text-secondary)';
+        }
+      });
+    }
+
+    if (zoomFullscreenBtn) {
+      zoomFullscreenBtn.addEventListener('click', () => {
+        this.sound.playTick();
+        if (!document.fullscreenElement) {
+          container.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+    }
+  }
+
+  // --- MODALI, PDF PROCESSING & ADMIN AUTH ---
+
+  bindAdminAndModalsEvents() {
     this.setupPdfDropzone('pdf-dropzone', 'pdf-file-input', 'pdf-dropzone-selected');
     this.setupPdfDropzone('replace-pdf-dropzone', 'replace-pdf-file-input', 'replace-pdf-dropzone-selected');
 
@@ -750,103 +1338,114 @@ class AppController {
       });
     }
 
-    // Stealth Admin Trigger
-    const stealthBtn = document.getElementById('btn-stealth-admin');
-    if (stealthBtn) {
-      stealthBtn.addEventListener('click', () => {
+    // Stealth Admin Button
+    const btnStealthAdmin = document.getElementById('btn-stealth-admin');
+    if (btnStealthAdmin) {
+      btnStealthAdmin.addEventListener('click', () => {
         AUTH.enteredPin = '';
         this.updatePinDots();
         document.getElementById('modal-admin-pin').style.display = 'flex';
       });
     }
 
-    // Modal Timesheet
-    const btnTimesheet = document.getElementById('btn-open-timesheet-modal');
-    if (btnTimesheet) {
-      btnTimesheet.addEventListener('click', () => {
-        document.getElementById('modal-timesheet').style.display = 'flex';
-      });
-    }
-    const closeTimesheet = document.getElementById('btn-close-timesheet-modal');
-    if (closeTimesheet) closeTimesheet.addEventListener('click', () => this.closeAllModals());
+    // Chiusura Modali
+    document.querySelectorAll('[id^="btn-close-"]').forEach(btn => {
+      btn.addEventListener('click', () => this.closeAllModals());
+    });
 
-    // Gestione Operatori
-    document.querySelectorAll('.operator-select-btn[data-operator-id]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const opId = parseInt(btn.dataset.operatorId, 10);
-        const op = DB.getOperators().find(o => o.id === opId);
-        if (op) {
-          AUTH.setActiveOperator(op);
-          this.closeAllModals();
-          this.render();
-        }
+    // Selezione Operatore
+    document.querySelectorAll('.operator-select-btn').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.operator-remove-link')) return;
+        const opId = card.dataset.operatorId;
+        AUTH.setActiveOperator(opId);
+        this.closeAllModals();
+        this.render();
       });
     });
 
-    document.querySelectorAll('[data-remove-op-id]').forEach(link => {
+    // Rimozione Operatore (Michele Admin)
+    document.querySelectorAll('.operator-remove-link').forEach(link => {
       link.addEventListener('click', (e) => {
         e.stopPropagation();
-        const opId = parseInt(link.dataset.removeOpId, 10);
+        const opId = link.dataset.removeOpId;
         this.showConfirmModal({
           title: 'RIMOZIONE OPERATORE',
-          message: 'Confermi la rimozione di questo operatore dalla squadra aziendale?',
-          confirmText: 'RIMUOVI OPERATORE',
+          message: 'Sei sicuro di voler rimuovere questo operatore dalla squadra di produzione?',
+          confirmText: 'RIMUOVI',
           isDestructive: true,
           onConfirm: () => {
-            DB.deleteOperator(opId);
+            DB.removeOperator(opId);
             this.render();
-            document.getElementById('modal-operator').style.display = 'flex';
           }
         });
       });
     });
 
-    const saveNewOpBtn = document.getElementById('btn-save-new-operator');
-    if (saveNewOpBtn) {
-      saveNewOpBtn.addEventListener('click', () => {
+    // Aggiunta Nuovo Operatore (Michele Admin)
+    const btnSaveNewOp = document.getElementById('btn-save-new-operator');
+    if (btnSaveNewOp) {
+      btnSaveNewOp.addEventListener('click', () => {
         const name = document.getElementById('new-op-name').value.trim();
         const role = document.getElementById('new-op-role').value.trim();
         if (!name) return;
-        DB.addOperator(name, role);
+        DB.addOperator({
+          id: 'op-' + Date.now(),
+          name,
+          role: role || 'Operatore Generico'
+        });
+        this.closeAllModals();
         this.render();
-        document.getElementById('modal-operator').style.display = 'flex';
       });
     }
 
-    const closeOpBtn = document.getElementById('btn-close-operator-modal');
-    if (closeOpBtn) closeOpBtn.addEventListener('click', () => this.closeAllModals());
-
-    // Tastierino PIN Stealth
+    // PIN Pad Digit Handling
     document.querySelectorAll('.pin-key[data-digit]').forEach(key => {
       key.addEventListener('click', () => {
+        const digit = key.dataset.digit;
+        this.sound.playTick();
         if (AUTH.enteredPin.length < 4) {
-          AUTH.enteredPin += key.dataset.digit;
+          AUTH.enteredPin += digit;
           this.updatePinDots();
+
           if (AUTH.enteredPin.length === 4) {
             setTimeout(() => {
               if (AUTH.verifyAdminPin(AUTH.enteredPin)) {
+                this.sound.playSuccess();
                 this.closeAllModals();
                 this.render();
               } else {
                 AUTH.enteredPin = '';
                 this.updatePinDots();
+                const pinBox = document.querySelector('.modal-pin-box');
+                if (pinBox) {
+                  pinBox.style.borderColor = '#FF3333';
+                  setTimeout(() => { pinBox.style.borderColor = ''; }, 600);
+                }
               }
-            }, 60);
+            }, 100);
           }
         }
       });
     });
 
-    const pinBack = document.getElementById('btn-pin-backspace');
-    if (pinBack) {
-      pinBack.addEventListener('click', () => {
+    const btnPinCancel = document.getElementById('btn-pin-cancel');
+    if (btnPinCancel) {
+      btnPinCancel.addEventListener('click', () => {
+        AUTH.enteredPin = '';
+        this.updatePinDots();
+        this.closeAllModals();
+      });
+    }
+
+    const btnPinBackspace = document.getElementById('btn-pin-backspace');
+    if (btnPinBackspace) {
+      btnPinBackspace.addEventListener('click', () => {
+        this.sound.playTick();
         AUTH.enteredPin = AUTH.enteredPin.slice(0, -1);
         this.updatePinDots();
       });
     }
-
-    const pinCancel = document.getElementById('btn-pin-cancel');
-    if (pinCancel) pinCancel.addEventListener('click', () => this.closeAllModals());
 
     // Nuova Commessa Admin con Caricamento PDF
     const openNewProjBtn = document.getElementById('btn-open-new-project');
@@ -858,8 +1457,6 @@ class AppController {
         document.getElementById('modal-new-project').style.display = 'flex';
       });
     }
-    const closeNewProjBtn = document.getElementById('btn-close-new-project');
-    if (closeNewProjBtn) closeNewProjBtn.addEventListener('click', () => this.closeAllModals());
 
     const saveNewProjBtn = document.getElementById('btn-save-new-project');
     if (saveNewProjBtn) {
@@ -878,7 +1475,7 @@ class AppController {
           components = await this.processPdfOrImageFile(this.selectedPdfFile);
         }
 
-        // Se nessun file caricato, carica preset tavole reali SEMA (photo_1 - photo_4)
+        // Se nessun file caricato, carica preset tavole reali SEMA
         if (components.length === 0) {
           components = [
             {
@@ -936,15 +1533,6 @@ class AppController {
     }
 
     // Modifica Commessa
-    const editProjBtn = document.getElementById('btn-edit-active-proj');
-    if (editProjBtn) {
-      editProjBtn.addEventListener('click', () => {
-        this.openEditProjectModal(this.selectedProjectId);
-      });
-    }
-    const closeEditProjBtn = document.getElementById('btn-close-edit-proj');
-    if (closeEditProjBtn) closeEditProjBtn.addEventListener('click', () => this.closeAllModals());
-
     const saveEditProjBtn = document.getElementById('btn-save-edit-proj');
     if (saveEditProjBtn) {
       saveEditProjBtn.addEventListener('click', () => {
@@ -997,8 +1585,6 @@ class AppController {
         this.render();
       });
     }
-    const closeReplacePdfBtn = document.getElementById('btn-close-replace-pdf');
-    if (closeReplacePdfBtn) closeReplacePdfBtn.addEventListener('click', () => this.closeAllModals());
 
     // Modale Modifica Telaio
     const saveEditCompBtn = document.getElementById('btn-save-edit-comp');
@@ -1014,20 +1600,8 @@ class AppController {
         this.render();
       });
     }
-    const closeEditCompBtn = document.getElementById('btn-close-edit-comp');
-    if (closeEditCompBtn) closeEditCompBtn.addEventListener('click', () => this.closeAllModals());
 
     // Modal Aggiunta Morale
-    document.querySelectorAll('[data-add-moral-comp-id]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.targetMoralCompId = btn.dataset.addMoralCompId;
-        document.getElementById('modal-add-moral').style.display = 'flex';
-      });
-    });
-
-    const closeAddMoralBtn = document.getElementById('btn-close-add-moral');
-    if (closeAddMoralBtn) closeAddMoralBtn.addEventListener('click', () => this.closeAllModals());
-
     const saveAddMoralBtn = document.getElementById('btn-save-new-moral');
     if (saveAddMoralBtn) {
       saveAddMoralBtn.addEventListener('click', () => {
@@ -1038,12 +1612,12 @@ class AppController {
 
         DB.addMoral(this.selectedProjectId, this.targetMoralCompId, qty, len, desc);
         this.closeAllModals();
-        this.render();
+        this.selectComponent(this.targetMoralCompId);
       });
     }
   }
 
-  // --- DROPZONE & PDF.JS PROCESSING ---
+  // --- DROPZONE & MOTORE PDF.JS ---
 
   setupPdfDropzone(dropzoneId, inputId, selectedLabelId) {
     const dropzone = document.getElementById(dropzoneId);
@@ -1087,7 +1661,6 @@ class AppController {
   }
 
   async processPdfOrImageFile(file) {
-    // Se è un PDF e PDF.js è disponibile nel browser
     if (file.type === 'application/pdf' && window.pdfjsLib) {
       try {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1108,7 +1681,6 @@ class AppController {
           await page.render({ canvasContext: ctx, viewport }).promise;
           const imageUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-          // Estrazione testo per individuare codice telaio e morali
           let code = `PM ${String(pageNum).padStart(2, '0')}`;
           let title = `TELAIO PAGINA ${pageNum}`;
           let morali = [];
@@ -1123,7 +1695,6 @@ class AppController {
             const titleMatch = text.match(/NR\s*\d+\s*TELAIO[^\n\r,]+/i);
             if (titleMatch) title = titleMatch[0].toUpperCase();
 
-            // Cerca righe morali tipo "NR 04 L. 3034.00"
             const moraliMatches = [...text.matchAll(/NR\s*(\d+)\s*L\.?\s*([\d\.,]+)/gi)];
             morali = moraliMatches.map((m, idx) => ({
               id: `m-pdf-${pageNum}-${idx + 1}`,
@@ -1161,7 +1732,6 @@ class AppController {
       }
     }
 
-    // Se è un'immagine singola
     if (file.type.startsWith('image/')) {
       const dataUrl = await new Promise(resolve => {
         const reader = new FileReader();
@@ -1215,56 +1785,6 @@ class AppController {
     document.getElementById('modal-edit-component').style.display = 'flex';
   }
 
-  // --- CONTROLLI ZOOM & PAN CAD ---
-
-  bindCadZoomEvents() {
-    const img = document.getElementById('cad-drawing-preview');
-    const container = document.getElementById('cad-drawing-container');
-    if (!img || !container) return;
-
-    const zoomInBtn = document.getElementById('btn-zoom-in');
-    const zoomOutBtn = document.getElementById('btn-zoom-out');
-    const zoomResetBtn = document.getElementById('btn-zoom-reset');
-    const zoomFullscreenBtn = document.getElementById('btn-zoom-fullscreen');
-
-    const updateTransform = () => {
-      img.style.transform = `scale(${this.zoomLevel}) translate(${this.panX}px, ${this.panY}px)`;
-    };
-
-    if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => {
-        this.zoomLevel = Math.min(4.0, this.zoomLevel + 0.25);
-        updateTransform();
-      });
-    }
-
-    if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => {
-        this.zoomLevel = Math.max(0.7, this.zoomLevel - 0.25);
-        updateTransform();
-      });
-    }
-
-    if (zoomResetBtn) {
-      zoomResetBtn.addEventListener('click', () => {
-        this.zoomLevel = 1.0;
-        this.panX = 0;
-        this.panY = 0;
-        updateTransform();
-      });
-    }
-
-    if (zoomFullscreenBtn) {
-      zoomFullscreenBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-          container.requestFullscreen().catch(() => {});
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
-      });
-    }
-  }
-
   updatePinDots() {
     for (let i = 1; i <= 4; i++) {
       const dot = document.getElementById(`pin-dot-${i}`);
@@ -1284,8 +1804,6 @@ class AppController {
     if (confirmOverlay) confirmOverlay.style.display = 'none';
     AUTH.enteredPin = '';
   }
-
-  // --- MODALI & STEALTH ADMIN ---
 
   renderStealthAdminButton() {
     return `
@@ -1441,7 +1959,6 @@ class AppController {
               <input type="date" id="new-proj-deadline" class="form-control" value="2026-11-20" />
             </div>
 
-            <!-- Area Dropzone PDF SEMA -->
             <div class="form-group">
               <label>CARICA TAVOLE TECNICHE CAD (FILE PDF SEMA)</label>
               <div class="pdf-dropzone" id="pdf-dropzone">
@@ -1614,6 +2131,7 @@ class AppController {
   }
 }
 
+// Inizializzazione Applicazione
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new AppController();
 });
