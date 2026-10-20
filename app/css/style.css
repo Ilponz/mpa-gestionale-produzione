@@ -1025,3 +1025,187 @@ body {
     padding: 16px;
   }
 }
+
+/* ==========================================================================
+   LOGICA DI PRODUZIONE 4.0: TIMER ATTIVO, BATCH TRONCATRICE & ETICHETTA QR
+   ========================================================================== */
+
+/* Cronometro Tattile Lavorazione */
+.btn-timer {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 8px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 140ms ease;
+}
+
+.btn-timer:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #FFFFFF;
+}
+
+.btn-timer.running {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+  animation: timerPulse 2s infinite ease-in-out;
+}
+
+@keyframes timerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+  50% { box-shadow: 0 0 16px 2px rgba(255, 255, 255, 0.8); }
+}
+
+/* Tabella Distinta Cumulativa Troncatrice (Nesting Barre) */
+.nesting-summary-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+  background: rgba(14, 18, 24, 0.6);
+  border: var(--glass-border);
+  padding: 14px;
+}
+
+.nesting-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nesting-metric-label {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.nesting-metric-val {
+  font-size: 16px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.batch-saw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.batch-saw-table th {
+  padding: 10px 12px;
+  background: rgba(20, 24, 32, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  text-align: left;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.batch-saw-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #FFFFFF;
+}
+
+.batch-saw-table tr:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.batch-saw-table tr.completed td {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+/* Scheda Etichetta QR Stampabile per Cantiere */
+.qr-label-card {
+  background: #FFFFFF;
+  color: #000000;
+  border: 3px solid #000000;
+  padding: 24px;
+  max-width: 460px;
+  margin: 0 auto;
+  font-family: var(--font-mono);
+}
+
+.qr-label-header {
+  border-bottom: 2px solid #000000;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.qr-label-brand {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.qr-label-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.qr-label-field {
+  margin-bottom: 8px;
+}
+
+.qr-label-field label {
+  font-size: 9px;
+  color: #666666;
+  text-transform: uppercase;
+  display: block;
+  font-weight: 700;
+}
+
+.qr-label-field .val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.qr-label-field .val-big {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.qr-canvas-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000000;
+  padding: 8px;
+  background: #FFFFFF;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #qr-label-print-area, #qr-label-print-area * {
+    visibility: visible;
+  }
+  #qr-label-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

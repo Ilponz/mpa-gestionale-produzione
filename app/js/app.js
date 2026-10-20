@@ -1,17 +1,18 @@
 /**
  * CONTROLLER APPLICATIVO PRINCIPALE (M.P.A. DI MAURIZIO CAVALLARO)
  * Estetica Architetturale Liquid Glass & Titanium Monochrome B&W.
- * Zero Template AI - Industrial Precision Woodworking CAD/CAM Software.
+ * Zero Template AI - Industrial Precision Woodworking CAD/CAM Software 4.0.
  * 
- * Moduli Integrati:
- * 1. SoundEngine: Sintetizzatore audio haptic tattile (Web Audio API nativo).
+ * Moduli di Produzione Integrati:
+ * 1. SoundEngine: Sintetizzatore audio tattile ad oscillatori (Web Audio API nativo).
  * 2. GSAP 3D Spatial Physics: Transizioni di navigazione con profondità Z e rotazione Y.
- * 3. Atropos 3D Parallax Tilt: Inclinazione dinamica delle schede con offset multilivello.
- * 4. Interpolazione Numerica GSAP: Animazione continua e morbida dei contatori percentuali.
- * 5. Celebration Engine: Particelle silver/titanium al 100% di completamento.
- * 6. Workstation SEMA CAD: Visualizzatore tavole con Zoom, Pan e modalità High-Contrast Inverted.
- * 7. Context Menu & Liquid Glass Central Modal: Pop-up di conferma a tema al centro schermo (zero alert/confirm nativi).
- * 8. PDF.js SEMA Engine: Parsing automatico multi-pagina e split telai con distinta morali.
+ * 3. Atropos 3D Parallax Tilt: Inclinazione dinamica con layer di offset indipendenti.
+ * 4. Production Gatekeeper: Vincolo logico bloccante tra Taglio Troncatrice e Montaggio Banco.
+ * 5. Active Stopwatch Timer: Cronometro reale per operatore con salvataggio automatico nel Timesheet.
+ * 6. Batch Sawing & 1D Nesting: Distinta cumulativa commessa e calcolo barre standard grezze da 6m con % sfrido.
+ * 7. QR Code Cantiere: Generazione etichetta tecnica stampabile per la posa in opera.
+ * 8. Multi-Device Real-Time Sync: Sincronizzazione istantanea tra postazioni via BroadcastChannel & Storage Event.
+ * 9. PDF.js SEMA Engine: Parsing automatico multi-pagina e split telai con distinta morali.
  */
 
 // ==========================================================================
@@ -79,7 +80,7 @@ class SoundEngine {
     } catch (e) {}
   }
 
-  // Sequenza di armonici puri al raggiungimento del 100%
+  // Sequenza di armonici puri al raggiungimento del 100% o salvataggio
   playSuccess() {
     if (!this.enabled) return;
     try {
@@ -124,6 +125,23 @@ class AppController {
     this.sound = new SoundEngine();
     this.atroposInstances = [];
 
+    // Timer Attivo Lavorazione
+    this.activeTimer = {
+      running: false,
+      projectId: null,
+      componentId: null,
+      componentCode: '',
+      projectName: '',
+      startTimeStr: '',
+      startTimeObj: null,
+      elapsedSeconds: 0,
+      intervalId: null
+    };
+
+    // Sincronizzazione Multi-Dispositivo
+    this.broadcastChannel = null;
+    this.initMultiDeviceSync();
+
     // File PDF selezionato per nuova commessa o sostituzione
     this.selectedPdfFile = null;
     this.targetUploadProjectId = null;
@@ -137,6 +155,58 @@ class AppController {
   init() {
     this.setupEventListeners();
     this.render();
+  }
+
+  // --- SINCRONIZZAZIONE REAL-TIME MULTI-SCHEDA & MULTI-DEVICE ---
+
+  initMultiDeviceSync() {
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        this.broadcastChannel = new BroadcastChannel('mpa_workshop_channel');
+        this.broadcastChannel.onmessage = (event) => {
+          if (event.data && event.data.type === 'DATA_UPDATED') {
+            DB.data = DB.loadData();
+            this.refreshCurrentViewSilently();
+          }
+        };
+      } catch (e) {
+        console.warn('BroadcastChannel non disponibile', e);
+      }
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'mpa_gestionale_data_v7') {
+        DB.data = DB.loadData();
+        this.refreshCurrentViewSilently();
+      }
+    });
+  }
+
+  broadcastDataUpdate() {
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({ type: 'DATA_UPDATED', timestamp: Date.now() });
+      } catch (e) {}
+    }
+  }
+
+  refreshCurrentViewSilently() {
+    // Aggiorna barre di progresso e contatori senza resettare lo zoom della tavola CAD
+    const proj = DB.getProjectById(this.selectedProjectId);
+    if (!proj) return;
+
+    const progress = DB.calculateProjectProgress(proj);
+    this.updateProjectProgressBar(this.selectedProjectId, progress);
+
+    if (this.currentNavLevel === 'components') {
+      const compPanel = document.querySelector('.nav-panel-components');
+      if (compPanel) {
+        compPanel.innerHTML = this.renderComponentsPanelContent();
+        this.initAtroposCards();
+        this.bindComponentPanelEvents();
+        this.bindBackBtnEvent();
+      }
+    }
   }
 
   setupEventListeners() {
@@ -319,7 +389,7 @@ class AppController {
     `;
   }
 
-  // CONTENUTO LIVELLO 2: PARTI DEL PROGETTO (TELAI) CON TASTO INDIETRO
+  // CONTENUTO LIVELLO 2: PARTI DEL PROGETTO (TELAI) CON BATCH TRONCATRICE
   renderComponentsPanelContent() {
     const project = DB.getProjectById(this.selectedProjectId);
     if (!project) {
@@ -344,16 +414,21 @@ class AppController {
     }
 
     return `
-      <!-- Header con Pulsante per Tornare alla Sezione Antecedente -->
+      <!-- Header con Pulsante per Tornare alla Sezione Antecedente e Tasto Troncatrice Batch -->
       <div class="panel-header">
         <button class="btn-nav-back" id="btn-back-to-projects" title="Torna all'elenco delle commesse">
           ← COMMESSE
         </button>
-        ${AUTH.isAdmin ? `
-          <button class="btn-outline-sm" id="btn-edit-active-proj" title="Modifica commessa">
-            [ MODIFICA ]
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="btn-outline-sm font-mono" id="btn-open-batch-saw" title="Distinta cumulativa troncatrice & calcolo sfrido barre grezze">
+            🪚 BATCH TRONCATRICE
           </button>
-        ` : ''}
+          ${AUTH.isAdmin ? `
+            <button class="btn-outline-sm" id="btn-edit-active-proj" title="Modifica commessa">
+              [ MODIFICA ]
+            </button>
+          ` : ''}
+        </div>
       </div>
 
       <!-- Intestazione Commessa e Barra Avanzamento Globale -->
@@ -469,6 +544,7 @@ class AppController {
     const morali = comp.morali || [];
     const checkedCount = morali.filter(m => m.checked).length;
     const totalCount = morali.length;
+    const isTimerActiveOnThisComp = this.isTimerRunningFor(comp.id);
 
     return `
       <section class="liquid-glass component-workstation">
@@ -487,14 +563,26 @@ class AppController {
           </div>
 
           <div class="workstation-actions">
+            <!-- Cronometro Tattile Lavorazione Attiva -->
+            <button class="btn-timer ${isTimerActiveOnThisComp ? 'running' : ''}" id="btn-toggle-work-timer" data-timer-comp-id="${comp.id}" title="Avvia/Arresta cronometro reale lavorazione">
+              ${isTimerActiveOnThisComp 
+                ? `⏱ IN CORSO: ${this.formatTimerTime(this.activeTimer.elapsedSeconds)} [ STOP & SALVA ]` 
+                : `⏱ AVVIA CRONOMETRO`}
+            </button>
+
             <!-- Azione Rapida Taglio -->
             <button class="btn-solid-white font-mono" data-action-toggle-cut="${comp.id}" style="${comp.cutStatus === 'completed' ? 'background:#FFFFFF; color:#000000;' : 'background:transparent; color:#FFFFFF; border:1px solid #FFFFFF;'}">
               TAGLIO: ${comp.cutStatus === 'completed' ? 'COMPLETATO' : 'IN CORSO (SEGNA FATTO)'}
             </button>
 
-            <!-- Azione Rapida Montaggio Banco -->
+            <!-- Azione Rapida Montaggio Banco (con Vincolo Bloccante Gatekeeper) -->
             <button class="btn-outline-white font-mono" data-action-toggle-assembly="${comp.id}" style="${comp.assemblyStatus === 'completed' ? 'background:#FFFFFF; color:#000000;' : ''}">
               MONTAGGIO: ${comp.assemblyStatus === 'completed' ? 'COMPLETATO' : 'BANCO (SEGNA FATTO)'}
+            </button>
+
+            <!-- Etichetta QR Posa Cantiere -->
+            <button class="btn-outline-sm font-mono" id="btn-print-qr-label" data-qr-comp-id="${comp.id}" title="Genera etichetta QR tecnica per cantiere">
+              🖨 ETICHETTA QR
             </button>
 
             <!-- Pulsante per Chiudere il Telaio e Tornare allo Sfondo -->
@@ -569,6 +657,88 @@ class AppController {
         </div>
       </section>
     `;
+  }
+
+  // --- GESTIONE CRONOMETRO TATTILE LAVORAZIONE ---
+
+  isTimerRunningFor(compId) {
+    return this.activeTimer.running && this.activeTimer.componentId === compId;
+  }
+
+  formatTimerTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  toggleWorkTimer(compId) {
+    const comp = DB.getComponent(this.selectedProjectId, compId);
+    const proj = DB.getProjectById(this.selectedProjectId);
+    if (!comp || !proj) return;
+
+    if (this.isTimerRunningFor(compId)) {
+      // Ferma e registra
+      clearInterval(this.activeTimer.intervalId);
+      const durationMins = Math.max(1, Math.round(this.activeTimer.elapsedSeconds / 60));
+      const now = new Date();
+      const endTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      DB.logWork(
+        proj.title,
+        comp.code,
+        'Lavorazione Banco/Troncatrice',
+        AUTH.activeOperator.name,
+        this.activeTimer.startTimeStr,
+        endTimeStr,
+        durationMins
+      );
+
+      this.sound.playSuccess();
+      this.broadcastDataUpdate();
+
+      this.activeTimer = {
+        running: false,
+        projectId: null,
+        componentId: null,
+        componentCode: '',
+        projectName: '',
+        startTimeStr: '',
+        startTimeObj: null,
+        elapsedSeconds: 0,
+        intervalId: null
+      };
+
+      this.selectComponent(compId);
+    } else {
+      // Se c'era un altro timer attivo, resettalo
+      if (this.activeTimer.intervalId) {
+        clearInterval(this.activeTimer.intervalId);
+      }
+
+      this.sound.playTick();
+      const now = new Date();
+      const startTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      this.activeTimer = {
+        running: true,
+        projectId: this.selectedProjectId,
+        componentId: compId,
+        componentCode: comp.code,
+        projectName: proj.title,
+        startTimeStr,
+        startTimeObj: now,
+        elapsedSeconds: 0,
+        intervalId: setInterval(() => {
+          this.activeTimer.elapsedSeconds++;
+          const btn = document.getElementById('btn-toggle-work-timer');
+          if (btn) {
+            btn.textContent = `⏱ IN CORSO: ${this.formatTimerTime(this.activeTimer.elapsedSeconds)} [ STOP & SALVA ]`;
+          }
+        }, 1000)
+      };
+
+      this.selectComponent(compId);
+    }
   }
 
   // --- MENU CONTESTUALE TASTO DESTRO (LIQUID GLASS) ---
@@ -882,6 +1052,7 @@ class AppController {
   toggleMoral(compId, moralId) {
     this.sound.playTick();
     DB.toggleMoral(this.selectedProjectId, compId, moralId);
+    this.broadcastDataUpdate();
 
     const comp = DB.getComponent(this.selectedProjectId, compId);
     const proj = DB.getProjectById(this.selectedProjectId);
@@ -1070,6 +1241,7 @@ class AppController {
                   this.selectedProjectId = DB.getProjects(true)[0]?.id || '';
                   this.currentNavLevel = 'projects';
                   this.selectedComponentId = null;
+                  this.broadcastDataUpdate();
                   this.render();
                 }
               });
@@ -1083,6 +1255,7 @@ class AppController {
     const timesheetBtn = document.getElementById('btn-open-timesheet-modal');
     if (timesheetBtn) {
       timesheetBtn.addEventListener('click', () => {
+        this.populateTimesheetModal();
         document.getElementById('modal-timesheet').style.display = 'flex';
       });
     }
@@ -1119,6 +1292,10 @@ class AppController {
             action: () => this.openEditComponentModal(compId)
           },
           {
+            label: '🖨 STAMPA ETICHETTA QR',
+            action: () => this.openQrLabelModal(compId)
+          },
+          {
             label: '🗑 ELIMINA TELAIO',
             destructive: true,
             action: () => {
@@ -1132,6 +1309,7 @@ class AppController {
                   if (this.selectedComponentId === compId) {
                     this.selectedComponentId = null;
                   }
+                  this.broadcastDataUpdate();
                   this.switchToComponents(this.selectedProjectId);
                 }
               });
@@ -1161,6 +1339,14 @@ class AppController {
       });
     }
 
+    // Modalità Batch Troncatrice
+    const btnBatchSaw = document.getElementById('btn-open-batch-saw');
+    if (btnBatchSaw) {
+      btnBatchSaw.addEventListener('click', () => {
+        this.openBatchSawModal();
+      });
+    }
+
     // Modifica Commessa da Header Livello 2
     const editProjBtn = document.getElementById('btn-edit-active-proj');
     if (editProjBtn) {
@@ -1176,6 +1362,24 @@ class AppController {
     if (closeWorkstationBtn) {
       closeWorkstationBtn.addEventListener('click', () => {
         this.closeWorkstation();
+      });
+    }
+
+    // Cronometro Tattile Lavorazione
+    const btnTimer = document.getElementById('btn-toggle-work-timer');
+    if (btnTimer) {
+      btnTimer.addEventListener('click', () => {
+        const compId = btnTimer.dataset.timerCompId;
+        this.toggleWorkTimer(compId);
+      });
+    }
+
+    // Etichetta QR Posa Cantiere
+    const btnQr = document.getElementById('btn-print-qr-label');
+    if (btnQr) {
+      btnQr.addEventListener('click', () => {
+        const compId = btnQr.dataset.qrCompId;
+        this.openQrLabelModal(compId);
       });
     }
 
@@ -1203,6 +1407,7 @@ class AppController {
           isDestructive: true,
           onConfirm: () => {
             DB.deleteMoral(this.selectedProjectId, compId, moralId);
+            this.broadcastDataUpdate();
             this.selectComponent(compId);
           }
         });
@@ -1218,19 +1423,44 @@ class AppController {
         this.sound.playTick();
         const nextStatus = comp.cutStatus === 'completed' ? 'todo' : 'completed';
         DB.updateOperationStatus(this.selectedProjectId, compId, 'cut', nextStatus, AUTH.activeOperator.name);
+        this.broadcastDataUpdate();
         this.selectComponent(compId);
       });
     });
 
-    // Toggle Azione Assemblaggio
+    // Toggle Azione Assemblaggio con VINCOLO BLOCCANTE GATEKEEPER
     document.querySelectorAll('[data-action-toggle-assembly]').forEach(btn => {
       btn.addEventListener('click', () => {
         const compId = btn.dataset.actionToggleAssembly;
         const comp = DB.getComponent(this.selectedProjectId, compId);
         if (!comp) return;
+
+        const morali = comp.morali || [];
+        const uncompletedMorali = morali.filter(m => !m.checked);
+
+        // Se si sta completando il montaggio ma ci sono morali ancora da tagliare:
+        if (comp.assemblyStatus !== 'completed' && uncompletedMorali.length > 0) {
+          this.sound.playTick();
+          this.showConfirmModal({
+            title: 'VINCOLO PRODUZIONE: MORALI NON TAGLIATI',
+            message: `ATTENZIONE: Il telaio "${comp.code} - ${comp.title}" ha ancora ${uncompletedMorali.length} pezzo/i non spuntati alla troncatrice da Francesca.\n\nVuoi procedere forzando il completamento del montaggio al banco?`,
+            confirmText: 'FORZA MONTAGGIO',
+            cancelText: 'ANNULLA',
+            isDestructive: true,
+            onConfirm: () => {
+              DB.updateOperationStatus(this.selectedProjectId, compId, 'assembly', 'completed', AUTH.activeOperator.name);
+              this.sound.playSuccess();
+              this.broadcastDataUpdate();
+              this.selectComponent(compId);
+            }
+          });
+          return;
+        }
+
         this.sound.playTick();
         const nextStatus = comp.assemblyStatus === 'completed' ? 'todo' : 'completed';
         DB.updateOperationStatus(this.selectedProjectId, compId, 'assembly', nextStatus, AUTH.activeOperator.name);
+        this.broadcastDataUpdate();
         this.selectComponent(compId);
       });
     });
@@ -1315,6 +1545,149 @@ class AppController {
     }
   }
 
+  // --- MODALITÀ TRONCATRICE BATCH (DISTINTA CUMULATIVA & NESTING) ---
+
+  openBatchSawModal() {
+    const list = DB.getBatchCuttingList(this.selectedProjectId);
+    const proj = DB.getProjectById(this.selectedProjectId);
+    if (!proj) return;
+
+    this.sound.playSwitch();
+    const modal = document.getElementById('modal-batch-saw');
+    if (!modal) return;
+
+    // Calcolo totali aggregati
+    const totalMeters = list.reduce((acc, i) => acc + parseFloat(i.totalLinearM), 0).toFixed(1);
+    const totalBars = list.reduce((acc, i) => acc + i.barsNeeded, 0);
+    const avgWaste = list.length > 0 ? (list.reduce((acc, i) => acc + parseFloat(i.wastePercent), 0) / list.length).toFixed(1) : '0.0';
+
+    const summaryEl = document.getElementById('batch-saw-metrics');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="nesting-metric">
+          <span class="nesting-metric-label">COMMESSA</span>
+          <span class="nesting-metric-val">${proj.code}</span>
+        </div>
+        <div class="nesting-metric">
+          <span class="nesting-metric-label">SVILUPPO LINEARE TOTALE</span>
+          <span class="nesting-metric-val">${totalMeters} M</span>
+        </div>
+        <div class="nesting-metric">
+          <span class="nesting-metric-label">BARRE STANDARD 6.00M</span>
+          <span class="nesting-metric-val">${totalBars} BARRE</span>
+        </div>
+        <div class="nesting-metric">
+          <span class="nesting-metric-label">SFRIDO MEDIO STIMATO</span>
+          <span class="nesting-metric-val">${avgWaste}%</span>
+        </div>
+      `;
+    }
+
+    const tbody = document.getElementById('batch-saw-tbody');
+    if (tbody) {
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Nessun pezzo da tagliare per questa commessa.</td></tr>`;
+      } else {
+        tbody.innerHTML = list.map(item => `
+          <tr class="${item.isCompleted ? 'completed' : ''}">
+            <td style="font-weight:700; color:#FFFFFF;">NR ${item.totalQty}</td>
+            <td style="font-weight:700;">${item.lengthStr} MM</td>
+            <td style="color:var(--text-secondary);">${item.desc}</td>
+            <td style="color:var(--text-muted); font-size:10px;">${item.componentCodesStr}</td>
+            <td>${item.barsNeeded} BARRE (6m)</td>
+            <td style="color:${parseFloat(item.wastePercent) > 10 ? '#FF8888' : '#88FF88'};">${item.wastePercent}% SFRIDO</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  // --- ETICHETTA QR CODE TECNICA PER CANTIERE ---
+
+  openQrLabelModal(compId) {
+    const comp = DB.getComponent(this.selectedProjectId, compId);
+    const proj = DB.getProjectById(this.selectedProjectId);
+    if (!comp || !proj) return;
+
+    this.sound.playSwitch();
+    const modal = document.getElementById('modal-qr-label');
+    if (!modal) return;
+
+    document.getElementById('qr-label-code').textContent = comp.code;
+    document.getElementById('qr-label-title').textContent = comp.title;
+    document.getElementById('qr-label-project').textContent = `${proj.title} (${proj.code})`;
+    document.getElementById('qr-label-client').textContent = proj.client;
+    document.getElementById('qr-label-page').textContent = `TAVOLA SEMA PAGINA ${comp.pageNumber} DI ${proj.totalComponents || proj.components.length}`;
+    document.getElementById('qr-label-notes').textContent = comp.note ? `NOTE OFFICINA: ${comp.note}` : 'NESSUNA NOTA SPECIFICA (POSA STANDARD)';
+    document.getElementById('qr-label-date').textContent = new Date().toLocaleDateString('it-IT');
+
+    // Generazione Codice QR reale
+    const qrContainer = document.getElementById('qr-code-svg-slot');
+    if (qrContainer) {
+      const qrPayload = `MPA_SEMA|COMM:${proj.code}|TELAIO:${comp.code}|PAGE:${comp.pageNumber}|CLIENT:${proj.client}`;
+      qrContainer.innerHTML = this.generateQrSvg(qrPayload);
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  generateQrSvg(text) {
+    if (typeof qrcode !== 'undefined') {
+      try {
+        const qr = qrcode(0, 'M');
+        qr.addData(text);
+        qr.make();
+        return qr.createSvgTag(4, 0);
+      } catch (e) {
+        console.warn('Errore rendering qrcode-generator:', e);
+      }
+    }
+    // Fallback SVG QR geometrico puro
+    return `
+      <svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="140" fill="white"/>
+        <rect x="10" y="10" width="40" height="40" fill="black"/>
+        <rect x="16" y="16" width="28" height="28" fill="white"/>
+        <rect x="22" y="22" width="16" height="16" fill="black"/>
+        <rect x="90" y="10" width="40" height="40" fill="black"/>
+        <rect x="96" y="16" width="28" height="28" fill="white"/>
+        <rect x="102" y="22" width="16" height="16" fill="black"/>
+        <rect x="10" y="90" width="40" height="40" fill="black"/>
+        <rect x="16" y="96" width="28" height="28" fill="white"/>
+        <rect x="22" y="102" width="16" height="16" fill="black"/>
+        <rect x="60" y="20" width="20" height="10" fill="black"/>
+        <rect x="60" y="40" width="10" height="20" fill="black"/>
+        <rect x="80" y="60" width="20" height="20" fill="black"/>
+        <rect x="60" y="90" width="20" height="10" fill="black"/>
+        <rect x="90" y="90" width="10" height="30" fill="black"/>
+        <rect x="110" y="100" width="20" height="20" fill="black"/>
+      </svg>
+    `;
+  }
+
+  populateTimesheetModal() {
+    const workLogs = DB.data.workLogs || [];
+    const tbody = document.getElementById('timesheet-tbody');
+    if (!tbody) return;
+
+    if (workLogs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-muted);">Nessuna lavorazione registrata.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = workLogs.map(log => `
+      <tr>
+        <td><strong>${log.projectName}</strong><br><span style="color:var(--text-muted); font-size:10px;">${log.componentCode}</span></td>
+        <td>${log.phase}</td>
+        <td>${log.operator}</td>
+        <td>${log.startTime} - ${log.endTime} ${log.durationMinutes ? `(${log.durationMinutes} min)` : ''}</td>
+        <td><span class="status-pill status-done">${log.status}</span></td>
+      </tr>
+    `).join('');
+  }
+
   // --- MODALI, PDF PROCESSING & ADMIN AUTH ---
 
   bindAdminAndModalsEvents() {
@@ -1353,6 +1726,14 @@ class AppController {
       btn.addEventListener('click', () => this.closeAllModals());
     });
 
+    // Stampa Etichetta QR
+    const btnPrintQr = document.getElementById('btn-action-print-qr');
+    if (btnPrintQr) {
+      btnPrintQr.addEventListener('click', () => {
+        window.print();
+      });
+    }
+
     // Selezione Operatore
     document.querySelectorAll('.operator-select-btn').forEach(card => {
       card.addEventListener('click', (e) => {
@@ -1376,6 +1757,7 @@ class AppController {
           isDestructive: true,
           onConfirm: () => {
             DB.removeOperator(opId);
+            this.broadcastDataUpdate();
             this.render();
           }
         });
@@ -1392,8 +1774,9 @@ class AppController {
         DB.addOperator({
           id: 'op-' + Date.now(),
           name,
-          role: role || 'Operatore Generico'
+          role: role || 'Operatore di Produzione'
         });
+        this.broadcastDataUpdate();
         this.closeAllModals();
         this.render();
       });
@@ -1527,6 +1910,7 @@ class AppController {
         this.selectedProjectId = newId;
         this.currentNavLevel = 'components';
         this.selectedComponentId = null;
+        this.broadcastDataUpdate();
         this.closeAllModals();
         this.render();
       });
@@ -1540,6 +1924,7 @@ class AppController {
         const client = document.getElementById('edit-proj-client').value.trim();
         const deadline = document.getElementById('edit-proj-deadline').value;
         DB.updateProject(this.selectedProjectId, { title, client, deadline });
+        this.broadcastDataUpdate();
         this.closeAllModals();
         this.render();
       });
@@ -1559,6 +1944,7 @@ class AppController {
             this.selectedProjectId = DB.getProjects(true)[0]?.id || '';
             this.currentNavLevel = 'projects';
             this.selectedComponentId = null;
+            this.broadcastDataUpdate();
             this.closeAllModals();
             this.render();
           }
@@ -1581,6 +1967,7 @@ class AppController {
             totalComponents: components.length
           });
         }
+        this.broadcastDataUpdate();
         this.closeAllModals();
         this.render();
       });
@@ -1596,6 +1983,7 @@ class AppController {
         const note = document.getElementById('edit-comp-note').value.trim();
 
         DB.updateComponent(this.selectedProjectId, this.targetEditCompId, { code, title, note });
+        this.broadcastDataUpdate();
         this.closeAllModals();
         this.render();
       });
@@ -1611,6 +1999,7 @@ class AppController {
         if (!len || !this.targetMoralCompId) return;
 
         DB.addMoral(this.selectedProjectId, this.targetMoralCompId, qty, len, desc);
+        this.broadcastDataUpdate();
         this.closeAllModals();
         this.selectComponent(this.targetMoralCompId);
       });
@@ -1815,7 +2204,6 @@ class AppController {
 
   renderModals() {
     const operators = DB.getOperators();
-    const workLogs = DB.data.workLogs || [];
 
     return `
       <!-- POP-UP DI CONFERMA A TEMA AL CENTRO DELLA PAGINA (ZERO ALERT NATIVI) -->
@@ -1830,6 +2218,92 @@ class AppController {
           <div class="confirm-popup-footer">
             <button class="btn-outline-white font-mono" id="btn-confirm-modal-cancel">ANNULLA</button>
             <button class="btn-solid-white font-mono" id="btn-confirm-modal-action">CONFERMA</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Batch Troncatrice & Nesting Cumulativo Commessa -->
+      <div id="modal-batch-saw" class="modal-overlay" style="display:none;">
+        <div class="modal-box" style="max-width:820px;">
+          <div class="modal-header">
+            <h3>DISTINTA CUMULATIVA TRONCATRICE & CALCOLO BARRE GREZZE (6.00 M)</h3>
+            <button class="btn-outline-sm" id="btn-close-batch-saw">[X]</button>
+          </div>
+          <div class="modal-body">
+            <div class="nesting-summary-card" id="batch-saw-metrics"></div>
+            <div style="overflow-x:auto; max-height:450px;">
+              <table class="batch-saw-table">
+                <thead>
+                  <tr>
+                    <th>Q.TÀ TOTALE</th>
+                    <th>LUNGHEZZA</th>
+                    <th>DESCRIZIONE</th>
+                    <th>TELAI DESTINAZIONE</th>
+                    <th>BARRE 6M STIMATE</th>
+                    <th>% SFRIDO</th>
+                  </tr>
+                </thead>
+                <tbody id="batch-saw-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Etichetta QR Posa Cantiere -->
+      <div id="modal-qr-label" class="modal-overlay" style="display:none;">
+        <div class="modal-box" style="max-width:540px;">
+          <div class="modal-header">
+            <h3>ETICHETTA TECNICA CON QR CODE (POSA IN OPERA)</h3>
+            <button class="btn-outline-sm" id="btn-close-qr-label">[X]</button>
+          </div>
+          <div class="modal-body" id="qr-label-print-area">
+            <div class="qr-label-card">
+              <div class="qr-label-header">
+                <div>
+                  <div class="qr-label-brand">MPA DI MAURIZIO CAVALLARO</div>
+                  <div style="font-size:9px; color:#666; margin-top:2px;">SEMA CAD/CAM 4.0 · CONTROLLO PRODUZIONE</div>
+                </div>
+                <div style="font-size:10px; font-weight:700;" id="qr-label-date"></div>
+              </div>
+
+              <div class="qr-label-grid">
+                <div>
+                  <div class="qr-label-field">
+                    <label>CODICE TELAIO</label>
+                    <div class="val val-big" id="qr-label-code"></div>
+                  </div>
+                  <div class="qr-label-field">
+                    <label>DESCRIZIONE ELEMENTO</label>
+                    <div class="val" id="qr-label-title"></div>
+                  </div>
+                  <div class="qr-label-field">
+                    <label>COMMESSA / CANTIERE</label>
+                    <div class="val" id="qr-label-project"></div>
+                  </div>
+                  <div class="qr-label-field">
+                    <label>DESTINAZIONE / CLIENTE</label>
+                    <div class="val" id="qr-label-client"></div>
+                  </div>
+                  <div class="qr-label-field">
+                    <label>POSIZIONE IN TAVOLA</label>
+                    <div class="val" id="qr-label-page" style="font-size:11px;"></div>
+                  </div>
+                </div>
+
+                <div class="qr-canvas-box">
+                  <div id="qr-code-svg-slot"></div>
+                  <div style="font-size:8px; font-weight:700; margin-top:6px; text-align:center;">INQUADRA COL TELEFONO PER LA TAVOLA CAD</div>
+                </div>
+              </div>
+
+              <div style="border-top:2px dashed #000; margin-top:14px; padding-top:10px;">
+                <div style="font-size:10px; font-weight:700; color:#000;" id="qr-label-notes"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-solid-white font-mono" id="btn-action-print-qr">🖨 STAMPA ETICHETTA</button>
           </div>
         </div>
       </div>
@@ -1906,7 +2380,7 @@ class AppController {
 
       <!-- Modal Registro Tempi & Produttività -->
       <div id="modal-timesheet" class="modal-overlay" style="display:none;">
-        <div class="modal-box" style="max-width:750px;">
+        <div class="modal-box" style="max-width:780px;">
           <div class="modal-header">
             <h3>REGISTRO TEMPI E PRODUTTIVITÀ LAVORAZIONI</h3>
             <button class="btn-outline-sm" id="btn-close-timesheet-modal">[X]</button>
@@ -1918,21 +2392,11 @@ class AppController {
                   <th>COMMESSA / TELAIO</th>
                   <th>FASE</th>
                   <th>OPERATORE</th>
-                  <th>ORARI</th>
+                  <th>ORARI (DURATA)</th>
                   <th>STATO</th>
                 </tr>
               </thead>
-              <tbody>
-                ${workLogs.map(log => `
-                  <tr>
-                    <td><strong>${log.projectName}</strong><br><span style="color:var(--text-muted); font-size:10px;">${log.componentCode}</span></td>
-                    <td>${log.phase}</td>
-                    <td>${log.operator}</td>
-                    <td>${log.startTime} - ${log.endTime}</td>
-                    <td><span class="status-pill status-done">${log.status}</span></td>
-                  </tr>
-                `).join('')}
-              </tbody>
+              <tbody id="timesheet-tbody"></tbody>
             </table>
           </div>
         </div>

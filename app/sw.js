@@ -1,5 +1,5 @@
-// Service Worker per MPA Gestionale Produzione v7.1 (3D Spatial Physics & Haptic Sound Engine)
-const CACHE_NAME = 'mpa-gestionale-v7.1';
+// Service Worker per MPA Gestionale Produzione v7.2 (Production 4.0: Timer, Gatekeeper & Nesting)
+const CACHE_NAME = 'mpa-gestionale-v7.2';
 const STATIC_ASSETS = [
   './',
   './index.html',

@@ -291,9 +291,17 @@ class StorageManager {
     return true;
   }
 
-  logWork(projectName, componentCode, phase, operator, startTime, endTime) {
+  logWork(projectName, componentCode, phase, operator, startTime, endTime, durationMinutes = null) {
     if (!this.data.workLogs) this.data.workLogs = [];
-    this.data.workLogs.unshift({
+    
+    let calcDuration = durationMinutes;
+    if (!calcDuration && startTime && endTime && startTime.includes(':') && endTime.includes(':')) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      calcDuration = Math.max(1, (eh * 60 + em) - (sh * 60 + sm));
+    }
+
+    const logEntry = {
       id: 'log-' + Date.now(),
       projectName,
       componentCode,
@@ -301,9 +309,86 @@ class StorageManager {
       operator: operator || 'NON SPECIFICATO',
       startTime: startTime || '--',
       endTime: endTime || '--',
+      durationMinutes: calcDuration || 1,
       date: new Date().toLocaleDateString('it-IT'),
       status: 'COMPLETATO'
+    };
+
+    this.data.workLogs.unshift(logEntry);
+    this.saveData(this.data);
+    this.queueAction({ type: 'LOG_WORK', log: logEntry });
+    return logEntry;
+  }
+
+  // --- ALGORITMO DI NESTING & AGGREGAZIONE CUMULATIVA COMMESSA PER TRONCATRICE ---
+  getBatchCuttingList(projectId) {
+    const project = this.getProjectById(projectId);
+    if (!project || !project.components) return [];
+
+    const map = new Map();
+
+    project.components.forEach(comp => {
+      (comp.morali || []).forEach(m => {
+        const len = parseFloat(m.length) || 0;
+        const desc = m.desc || 'Elemento strutturale';
+        const key = `${desc.trim().toLowerCase()}__${len.toFixed(2)}`;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            desc: desc,
+            length: len,
+            lengthStr: m.length,
+            totalQty: 0,
+            checkedQty: 0,
+            componentCodes: new Set()
+          });
+        }
+        const item = map.get(key);
+        const qty = parseInt(m.qty, 10) || 1;
+        item.totalQty += qty;
+        if (m.checked) {
+          item.checkedQty += qty;
+        }
+        item.componentCodes.add(comp.code);
+      });
     });
+
+    const list = Array.from(map.values()).map(item => {
+      const totalLinearMm = item.totalQty * item.length;
+      const totalLinearM = (totalLinearMm / 1000).toFixed(2);
+      
+      // Standard barre da 6000 mm (6.0 metri)
+      const STANDARD_BAR_MM = 6000;
+      const piecesPerBar = Math.floor(STANDARD_BAR_MM / item.length);
+      let barsNeeded = 0;
+      let wasteM = 0;
+      let wastePercent = 0;
+
+      if (piecesPerBar > 0) {
+        barsNeeded = Math.ceil(item.totalQty / piecesPerBar);
+        const totalRawMm = barsNeeded * STANDARD_BAR_MM;
+        const totalUsedMm = item.totalQty * item.length;
+        wasteM = Math.max(0, (totalRawMm - totalUsedMm) / 1000).toFixed(2);
+        wastePercent = totalRawMm > 0 ? Math.max(0, ((totalRawMm - totalUsedMm) / totalRawMm) * 100).toFixed(1) : 0;
+      } else {
+        barsNeeded = item.totalQty;
+        wasteM = '0.00';
+        wastePercent = '0.0';
+      }
+
+      return {
+        ...item,
+        componentCodesStr: Array.from(item.componentCodes).join(', '),
+        totalLinearM,
+        barsNeeded,
+        wasteM,
+        wastePercent,
+        isCompleted: item.checkedQty >= item.totalQty
+      };
+    });
+
+    // Ordine decrescente: si tagliano prima i pezzi più lunghi
+    return list.sort((a, b) => b.length - a.length);
   }
 
   calculateProjectProgress(project) {
