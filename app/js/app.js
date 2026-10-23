@@ -176,6 +176,7 @@ class AppController {
   init() {
     this.initMultiDeviceSync();
     this.setupEventListeners();
+    this.restoreActiveTimerIfAny();
     this.render();
     this.startLiveTickerLoop();
   }
@@ -826,14 +827,59 @@ class AppController {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 
+  restoreActiveTimerIfAny() {
+    try {
+      const saved = localStorage.getItem('mpa_active_work_timer');
+      if (saved) {
+        const t = JSON.parse(saved);
+        if (t && t.compId && t.startTime) {
+          const elapsed = Math.floor((Date.now() - t.startTime) / 1000);
+          this.activeTimer = {
+            compId: t.compId,
+            projId: t.projId,
+            startTime: t.startTime,
+            startTimeStr: t.startTimeStr,
+            elapsedSeconds: elapsed,
+            intervalId: setInterval(() => {
+              this.activeTimer.elapsedSeconds = Math.floor((Date.now() - this.activeTimer.startTime) / 1000);
+              const btn = document.getElementById('btn-toggle-work-timer');
+              if (btn && btn.dataset.timerCompId === this.activeTimer.compId) {
+                btn.textContent = `⏱ IN CORSO: ${this.formatTimerTime(this.activeTimer.elapsedSeconds)} [ STOP & SALVA ]`;
+              }
+            }, 1000)
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
   toggleWorkTimer(compId) {
     const comp = DB.getComponent(this.selectedProjectId, compId);
     const proj = DB.getProjectById(this.selectedProjectId);
     if (!comp || !proj) return;
 
+    // Gestione Concorrenza: Se un altro cronometro è già attivo su un diverso telaio
+    if (this.activeTimer.compId && this.activeTimer.compId !== compId) {
+      const runningComp = DB.getComponent(this.selectedProjectId, this.activeTimer.compId);
+      const code = runningComp ? runningComp.code : 'un altro telaio';
+      this.showConfirmModal({
+        title: '⏱ CRONOMETRO GIÀ ATTIVO',
+        message: `È già attivo un cronometro sul telaio <strong>${code}</strong> (${this.formatTimerTime(this.activeTimer.elapsedSeconds)}).<br><br>Vuoi fermare e registrare il tempo precedente prima di avviare questo telaio?`,
+        confirmText: 'SALVA E AVVIA QUESTO',
+        cancelText: 'ANNULLA',
+        onConfirm: () => {
+          this.toggleWorkTimer(this.activeTimer.compId);
+          setTimeout(() => this.toggleWorkTimer(compId), 120);
+        }
+      });
+      return;
+    }
+
     if (this.isTimerRunningFor(compId)) {
       // STOP CRONOMETRO E REGISTRAZIONE AUTOMATICA NEL TIMESHEET
       clearInterval(this.activeTimer.intervalId);
+      localStorage.removeItem('mpa_active_work_timer');
+
       const elapsedMins = Math.max(1, Math.round(this.activeTimer.elapsedSeconds / 60));
       const endNow = new Date();
       const endTimeStr = `${String(endNow.getHours()).padStart(2, '0')}:${String(endNow.getMinutes()).padStart(2, '0')}`;
@@ -862,22 +908,32 @@ class AppController {
       this.broadcastDataUpdate();
       this.render();
     } else {
-      // AVVIA CRONOMETRO
+      // AVVIA CRONOMETRO CON PERSISTENZA LOCALSTORAGE
       if (this.activeTimer.intervalId) {
         clearInterval(this.activeTimer.intervalId);
       }
       const now = new Date();
       const startStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const nowTime = Date.now();
+
+      localStorage.setItem('mpa_active_work_timer', JSON.stringify({
+        compId: compId,
+        projId: this.selectedProjectId,
+        startTime: nowTime,
+        startTimeStr: startStr,
+        operator: AUTH.activeOperator.name
+      }));
 
       this.activeTimer = {
         compId: compId,
-        startTime: Date.now(),
+        projId: this.selectedProjectId,
+        startTime: nowTime,
         startTimeStr: startStr,
         elapsedSeconds: 0,
         intervalId: setInterval(() => {
           this.activeTimer.elapsedSeconds = Math.floor((Date.now() - this.activeTimer.startTime) / 1000);
           const btn = document.getElementById('btn-toggle-work-timer');
-          if (btn) {
+          if (btn && btn.dataset.timerCompId === compId) {
             btn.textContent = `⏱ IN CORSO: ${this.formatTimerTime(this.activeTimer.elapsedSeconds)} [ STOP & SALVA ]`;
           }
         }, 1000)
@@ -1028,7 +1084,7 @@ class AppController {
     modal.style.display = 'none';
   }
 
-  // --- CONFERMA SPUNTA PEZZI & FASI ---
+  // --- CONFERMA SPUNTA PEZZI & FASI (CON GESTIONE TUTTI GLI EDGE CASES) ---
 
   confirmToggleMoral(compId, moralId) {
     const comp = DB.getComponent(this.selectedProjectId, compId);
@@ -1050,9 +1106,22 @@ class AppController {
         }
       });
     } else {
+      // Casistica Cross-Operator: Il pezzo è stato tagliato da un altro operatore?
+      const checkedBy = moral.checkedBy || 'un altro operatore';
+      const isDifferent = checkedBy.toLowerCase() !== op.name.toLowerCase();
+      const isAlreadyAssembled = comp.assemblyStatus === 'completed';
+
+      let warningMsg = `Vuoi ripristinare il pezzo <strong>${moral.desc}</strong> (L. ${moral.length} mm) come non ancora tagliato?`;
+      if (isDifferent) {
+        warningMsg = `⚠️ <strong>VERIFICA ATTRIBUZIONE:</strong> Questo pezzo risulta tagliato e firmato da <strong style="color:${this.getOperatorColor(checkedBy)};">${checkedBy}</strong> (${moral.checkedDate || ''} ${moral.checkedAt || ''}).<br><br>Confermi di voler annullare la spunta per mano di <strong>${op.name}</strong>?`;
+      }
+      if (isAlreadyAssembled) {
+        warningMsg += `<br><br><span style="color:#FFAE42; font-weight:700;">⚠️ ATTENZIONE GATEKEEPER:</span> Questo telaio risulta già MONTATO al banco. Ripristinando questo pezzo, anche la fase di montaggio verrà automaticamente riaperta!`;
+      }
+
       this.showConfirmModal({
-        title: 'ANNULLA SPUNTA PEZZO',
-        message: `Vuoi ripristinare il pezzo <strong>${moral.desc}</strong> come non ancora tagliato?`,
+        title: isDifferent ? '⚠️ ANNULLA SPUNTA (ALTRO OPERATORE)' : 'ANNULLA SPUNTA PEZZO',
+        message: warningMsg,
         confirmText: 'RIPRISTINA PEZZO',
         cancelText: 'ANNULLA',
         isDestructive: true,
@@ -1070,12 +1139,25 @@ class AppController {
     const isDone = comp.cutStatus === 'completed';
 
     if (!isDone) {
+      const uncutCount = (comp.morali || []).filter(m => !m.checked).length;
       this.showConfirmModal({
         title: 'CONFERMA COMPLETAMENTO TAGLIO',
-        message: `Confermi che tutti i pezzi del telaio <strong>${comp.code} - ${comp.title}</strong> sono stati tagliati e verificati da <strong style="color:${this.getOperatorColor(op.name)};">${op.name}</strong>?`,
-        confirmText: 'SEGNA COMPLETATO',
+        message: `Confermi che tutti i pezzi del telaio <strong>${comp.code} - ${comp.title}</strong> sono stati tagliati e verificati da <strong style="color:${this.getOperatorColor(op.name)};">${op.name}</strong>?<br><br>${uncutCount > 0 ? `I <strong>${uncutCount} morali</strong> non ancora spuntati verranno automaticamente contrassegnati come tagliati e firmati da ${op.name}.` : 'Tutti i pezzi risultano già spuntati.'}`,
+        confirmText: 'SEGNA TUTTO TAGLIATO',
         cancelText: 'ANNULLA',
         onConfirm: () => {
+          // Segna tutti i morali residui come tagliati
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+          (comp.morali || []).forEach(m => {
+            if (!m.checked) {
+              m.checked = true;
+              m.checkedBy = op.name;
+              m.checkedAt = timeStr;
+              m.checkedDate = dateStr;
+            }
+          });
           DB.updateOperationStatus(this.selectedProjectId, compId, 'cut', 'completed', op.name);
           this.broadcastDataUpdate();
           this.sound.playSuccess();
@@ -1085,12 +1167,12 @@ class AppController {
     } else {
       this.showConfirmModal({
         title: 'RIAPRI FASE DI TAGLIO',
-        message: `Vuoi riaprire la fase di taglio per il telaio <strong>${comp.code}</strong>?`,
+        message: `Vuoi riaprire la fase di taglio per il telaio <strong>${comp.code}</strong>?<br><br>I pezzi rimarranno spuntati, ma lo stato del telaio tornerà 'In Lavorazione'.`,
         confirmText: 'RIAPRI TAGLIO',
         cancelText: 'ANNULLA',
         isDestructive: true,
         onConfirm: () => {
-          DB.updateOperationStatus(this.selectedProjectId, compId, 'cut', 'todo', op.name);
+          DB.updateOperationStatus(this.selectedProjectId, compId, 'cut', 'wip', op.name);
           this.broadcastDataUpdate();
           this.render();
         }
@@ -1105,9 +1187,10 @@ class AppController {
     // Vincolo Bloccante Gatekeeper: verifica che tutti i morali siano stati tagliati
     const uncompleted = (comp.morali || []).filter(m => !m.checked);
     if (comp.assemblyStatus !== 'completed' && uncompleted.length > 0) {
+      const missingList = uncompleted.slice(0, 4).map(m => `• NR ${m.qty} L. ${m.length} mm (${m.desc})`).join('<br>');
       this.showConfirmModal({
-        title: 'VINCOLO GATEKEEPER PRODUZIONE',
-        message: `Impossibile completare il montaggio al banco.<br><br>Risultano ancora <strong>${uncompleted.length} morali non tagliati</strong> alla troncatrice. Taglia e spunta tutti i pezzi prima di procedere all'assemblaggio.`,
+        title: '🛑 BLOCCO GATEKEEPER PRODUZIONE',
+        message: `Impossibile completare il montaggio al banco.<br><br>Risultano ancora <strong>${uncompleted.length} morali non tagliati</strong> alla troncatrice:<br><br><div style="padding:8px 12px; background:rgba(255,68,68,0.1); border-left:3px solid #FF4444; font-size:11px;">${missingList}${uncompleted.length > 4 ? '<br>• ...ed altri pezzi' : ''}</div><br>Spunta tutti i pezzi prima di procedere all'assemblaggio.`,
         confirmText: 'HO CAPITO',
         cancelText: '',
         isDestructive: true,
@@ -1141,7 +1224,7 @@ class AppController {
         cancelText: 'ANNULLA',
         isDestructive: true,
         onConfirm: () => {
-          DB.updateOperationStatus(this.selectedProjectId, compId, 'assembly', 'todo', op.name);
+          DB.updateOperationStatus(this.selectedProjectId, compId, 'assembly', 'wip', op.name);
           this.broadcastDataUpdate();
           this.render();
         }
@@ -2164,9 +2247,9 @@ class AppController {
               ${rows.map((r, i) => `
                 <tr style="border:1px solid #000;">
                   <td style="border:1px solid #000; padding:6px; text-align:center; font-weight:700;">${i + 1}</td>
-                  <td style="border:1px solid #000; padding:6px;">${r.lavorazione}</td>
-                  <td style="border:1px solid #000; padding:6px; text-align:center; font-weight:700;">${r.oreLavorate}</td>
-                  <td style="border:1px solid #000; padding:6px; text-align:center;">${r.quantita}</td>
+                  <td style="border:1px solid #000; padding:6px;" contenteditable="true" title="Clicca per modificare prima di stampare">${r.lavorazione}</td>
+                  <td style="border:1px solid #000; padding:6px; text-align:center; font-weight:700;" contenteditable="true" title="Clicca per modificare ore">${r.oreLavorate}</td>
+                  <td style="border:1px solid #000; padding:6px; text-align:center;" contenteditable="true" title="Clicca per modificare quantità">${r.quantita}</td>
                 </tr>
               `).join('')}
               ${Array.from({ length: Math.max(0, 6 - rows.length) }).map((_, idx) => `
@@ -2237,12 +2320,12 @@ class AppController {
               ${rows.map((r, i) => `
                 <tr style="border:1px solid #000;">
                   <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${i + 1}</td>
-                  <td style="border:1px solid #000; padding:5px;">${r.operaContratto || r.lavorazione}</td>
-                  <td style="border:1px solid #000; padding:5px; text-align:center;">${r.data}</td>
-                  <td style="border:1px solid #000; padding:5px; text-align:center;">${r.oraEntrata}</td>
-                  <td style="border:1px solid #000; padding:5px; text-align:center;">${r.oraUscita}</td>
-                  <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;">${r.oreLavorate}</td>
-                  <td style="border:1px solid #000; padding:5px; text-align:center; font-size:10px;">${r.operatore}</td>
+                  <td style="border:1px solid #000; padding:5px;" contenteditable="true" title="Clicca per modificare">${r.operaContratto || r.lavorazione}</td>
+                  <td style="border:1px solid #000; padding:5px; text-align:center;" contenteditable="true">${r.data}</td>
+                  <td style="border:1px solid #000; padding:5px; text-align:center;" contenteditable="true">${r.oraEntrata}</td>
+                  <td style="border:1px solid #000; padding:5px; text-align:center;" contenteditable="true">${r.oraUscita}</td>
+                  <td style="border:1px solid #000; padding:5px; text-align:center; font-weight:700;" contenteditable="true">${r.oreLavorate}</td>
+                  <td style="border:1px solid #000; padding:5px; text-align:center; font-size:10px;" contenteditable="true">${r.operatore}</td>
                 </tr>
               `).join('')}
               ${Array.from({ length: Math.max(0, 5 - rows.length) }).map((_, idx) => `
@@ -2454,7 +2537,14 @@ class AppController {
         const isConfidential = document.getElementById('new-proj-confidential').checked;
 
         if (!title || !client) {
-          alert('Inserisci titolo e cliente.');
+          this.showConfirmModal({
+            title: 'CAMPI OBBLIGATORI',
+            message: 'Inserisci sia il titolo della commessa che il cliente per poter procedere.',
+            confirmText: 'HO CAPITO',
+            cancelText: '',
+            isDestructive: true,
+            onConfirm: () => {}
+          });
           return;
         }
 
@@ -2569,7 +2659,8 @@ class AppController {
             isDestructive: true,
             onConfirm: () => {
               DB.deleteProject(this.selectedProjectId);
-              this.selectedProjectId = 'proj-1';
+              const remaining = DB.getProjects(true);
+              this.selectedProjectId = remaining.length > 0 ? remaining[0].id : null;
               this.selectedComponentId = null;
               this.closeAllModals();
               this.sound.playTick();
@@ -3261,13 +3352,16 @@ class AppController {
               <button class="btn-outline-sm font-mono audit-date-filter" data-audit-range="today">OGGI</button>
             </div>
 
-            <!-- Pulsanti Export CSV & Stampa -->
+            <!-- Pulsanti Export CSV, Stampa & Svuota -->
             <div style="display:flex; gap:8px; align-items:center;">
               <button class="btn-solid-white font-mono" id="btn-export-audit-csv" title="Esporta storico movimenti in CSV per Excel" style="font-size:11px;">
                 📥 ESPORTA CSV
               </button>
               <button class="btn-outline-sm font-mono" id="btn-print-audit-report" title="Stampa registro audit su foglio A4" style="font-size:11px;">
                 🖨️ STAMPA
+              </button>
+              <button class="btn-outline-sm font-mono" id="btn-clear-audit-logs" title="Svuota registro (Richiede PIN Admin)" style="font-size:11px; border-color:#FF4444; color:#FF4444;">
+                🗑️ SVUOTA
               </button>
             </div>
           </div>
@@ -3527,6 +3621,26 @@ class AppController {
     if (btnPrint) {
       btnPrint.addEventListener('click', () => {
         window.print();
+      });
+    }
+
+    const btnClearAudit = document.getElementById('btn-clear-audit-logs');
+    if (btnClearAudit) {
+      btnClearAudit.addEventListener('click', () => {
+        AUTH.requireAdmin(() => {
+          this.showConfirmModal({
+            title: 'SVUOTA REGISTRO AUDIT',
+            message: 'Sei sicuro di voler eliminare TUTTI i movimenti registrati nello storico?<br><br>L\'operazione è permanente ed irreversibile.',
+            confirmText: 'ELIMINA DEFINITIVAMENTE',
+            cancelText: 'ANNULLA',
+            isDestructive: true,
+            onConfirm: () => {
+              DB.clearAuditLogs();
+              this.renderAuditTable();
+              this.sound.playTick();
+            }
+          });
+        }, 'Svuotamento Storico Movimenti');
       });
     }
   }
