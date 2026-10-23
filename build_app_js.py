@@ -179,6 +179,12 @@ class AppController {
     // Loop Ticker
     this.tickerInterval = null;
 
+    // Filtri Pannello Admin: Storico Movimenti & Audit Produzione
+    this.auditFilterOp = 'all';
+    this.auditActionCategory = 'all';
+    this.auditSearchQuery = '';
+    this.auditDateRange = 'all';
+
     this.init();
   }
 
@@ -378,6 +384,11 @@ class AppController {
           <!-- Tasto Switch Audio Meccanico -->
           <button class="sound-toggle-btn ${this.sound.enabled ? '' : 'muted'}" id="btn-toggle-sound" title="Attiva/Disattiva Suoni Meccanici">
             ${this.sound.enabled ? 'AUDIO: ON' : 'AUDIO: OFF'}
+          </button>
+
+          <!-- Tasto Storico Movimenti Pannello Admin Michele -->
+          <button class="admin-audit-btn font-mono" id="btn-open-audit-log" title="Pannello Admin: Storico completo di tutti i movimenti eseguiti dagli operatori">
+            🛡️ STORICO MOVIMENTI
           </button>
 
           <!-- Tasto Rapportino Giornaliero Stampabile A4 -->
@@ -886,6 +897,17 @@ class AppController {
           }
         }, 1000)
       };
+
+      DB.logAuditAction({
+        operator: AUTH.activeOperator.name,
+        actionType: 'TIMER_START',
+        actionLabel: 'AVVIO CRONOMETRO',
+        details: `${AUTH.activeOperator.name} ha avviato cronometro reale per ${comp.code} (${proj.title})`,
+        projectCode: proj.code,
+        projectName: proj.title,
+        componentCode: comp.code,
+        station: comp.cutStatus !== 'completed' ? 'Postazione Troncatrice 1' : 'Banco Assemblaggio 1'
+      });
 
       this.sound.playTick();
       this.render();
@@ -1483,6 +1505,7 @@ class AppController {
     this.bindAdminAndModalsEvents();
     this.bindActivityDrawerEvents();
     this.bindRapportinoEvents();
+    this.bindAuditLogEvents();
 
     // Click fuori chiude menu contestuale
     document.addEventListener('click', (e) => {
@@ -2360,6 +2383,13 @@ class AppController {
           if (AUTH.enteredPin.length === 4) {
             setTimeout(() => {
               if (AUTH.verifyAdminPin(AUTH.enteredPin)) {
+                DB.logAuditAction({
+                  operator: 'Michele',
+                  actionType: 'ADMIN_LOGIN',
+                  actionLabel: 'ACCESSO ADMIN PIN 1991',
+                  details: 'Accesso privilegiato Admin Michele confermato con PIN 1991',
+                  station: 'Postazione Ufficio Tecnico'
+                });
                 this.sound.playSuccess();
                 this.closeAllModals();
                 this.render();
@@ -2825,6 +2855,9 @@ class AppController {
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn-solid-white font-mono" id="btn-drawer-to-audit" style="font-size:10px; padding:4px 8px;" title="Apri Storico Completo Movimenti per Admin Michele">
+                🛡️ STORICO COMPLETO
+              </button>
               <button class="btn-outline-sm font-mono" id="btn-mark-all-read" title="Segna tutte come lette">
                 ✓ LETTE
               </button>
@@ -3190,6 +3223,88 @@ class AppController {
           </div>
         </div>
       </div>
+
+      <!-- Modal Pannello Admin: Storico Movimenti Globale & Audit Produzione -->
+      <div id="modal-audit-log" class="modal-overlay" style="display:none;">
+        <div class="modal-box" style="max-width:1160px; max-height:94vh; display:flex; flex-direction:column; padding:0;">
+          <div class="modal-header" style="padding:14px 20px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:18px;">🛡️</span>
+              <div>
+                <h3 style="font-size:13px; letter-spacing:0.08em;">PANNELLO ADMIN · STORICO MOVIMENTI & AUDIT PRODUZIONE</h3>
+                <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted); margin-top:2px;">
+                  REGISTRO IMMUTABILE DI TUTTI I MOVIMENTI IN FABBRICA (ACCESSO RISERVATO MICHELE)
+                </div>
+              </div>
+            </div>
+            <button class="btn-outline-sm" id="btn-close-audit-log">[X]</button>
+          </div>
+
+          <!-- KPI Summary Bar -->
+          <div class="audit-kpi-bar" id="audit-kpi-container"></div>
+
+          <!-- Toolbar Filtri & Azioni -->
+          <div class="audit-toolbar" style="padding:10px 18px; border-bottom:var(--glass-border-light); background:rgba(12,14,20,0.85); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+            <!-- Filtri Operatore -->
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted); margin-right:4px;">OPERATORE:</span>
+              <button class="btn-outline-sm font-mono audit-op-filter active" data-audit-op="all">TUTTI</button>
+              <button class="btn-outline-sm font-mono audit-op-filter" data-audit-op="Francesca">FRANCESCA</button>
+              <button class="btn-outline-sm font-mono audit-op-filter" data-audit-op="Daniel">DANIEL</button>
+              <button class="btn-outline-sm font-mono audit-op-filter" data-audit-op="Michele">MICHELE</button>
+              <button class="btn-outline-sm font-mono audit-op-filter" data-audit-op="Maurizio">MAURIZIO</button>
+            </div>
+
+            <!-- Filtro Categoria Azione -->
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);">AZIONE:</span>
+              <select id="audit-action-type-select" class="form-control" style="font-size:11px; padding:4px 8px; width:155px; background:rgba(0,0,0,0.6); color:#fff; border:var(--glass-border);">
+                <option value="all">TUTTE LE AZIONI</option>
+                <option value="CUT">TAGLIO (TRONCATRICE)</option>
+                <option value="ASSEMBLY">MONTAGGIO (BANCO)</option>
+                <option value="TIMER">TEMPI & CRONOMETRO</option>
+                <option value="CAD_PROJECT">COMMESSE & TAVOLE CAD</option>
+                <option value="PRINT">STAMPE & RAPPORTINI</option>
+                <option value="ADMIN">ACCESSI ADMIN MICHELE</option>
+              </select>
+            </div>
+
+            <!-- Ricerca Testuale & Periodo -->
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="text" id="audit-search-input" class="form-control" placeholder="CERCA TELAIO, MORALE..." style="font-size:11px; padding:4px 10px; width:160px;" />
+              <button class="btn-outline-sm font-mono audit-date-filter active" data-audit-range="all">TUTTO</button>
+              <button class="btn-outline-sm font-mono audit-date-filter" data-audit-range="today">OGGI</button>
+            </div>
+
+            <!-- Pulsanti Export CSV & Stampa -->
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn-solid-white font-mono" id="btn-export-audit-csv" title="Esporta storico movimenti in CSV per Excel" style="font-size:11px;">
+                📥 ESPORTA CSV
+              </button>
+              <button class="btn-outline-sm font-mono" id="btn-print-audit-report" title="Stampa registro audit su foglio A4" style="font-size:11px;">
+                🖨️ STAMPA
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabella Scrollabile Movimenti -->
+          <div class="modal-body" style="padding:0; overflow-y:auto; flex:1;" id="audit-print-area">
+            <table class="audit-table font-mono">
+              <thead>
+                <tr>
+                  <th style="width:125px;">DATA & ORA</th>
+                  <th style="width:110px;">OPERATORE</th>
+                  <th style="width:145px;">AZIONE</th>
+                  <th style="width:165px;">COMMESSA / TELAIO</th>
+                  <th>DETTAGLI MOVIMENTO</th>
+                  <th style="width:140px;">POSTAZIONE</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -3213,6 +3328,221 @@ class AppController {
       case 'wip': return 'status-wip';
       case 'paused': return 'status-paused';
       default: return 'status-todo';
+    }
+  }
+
+
+  // ==========================================================================
+  // METODI PANNELLO ADMIN: STORICO MOVIMENTI & AUDIT PRODUZIONE
+  // ==========================================================================
+
+  getAuditBadgeHtml(actionType, actionLabel) {
+    const type = String(actionType || '').toUpperCase();
+    const label = actionLabel || type;
+    if (type.includes('CUT')) {
+      return `<span class="audit-badge audit-badge-cut">✂ ${label}</span>`;
+    }
+    if (type.includes('ASSEMBLY')) {
+      return `<span class="audit-badge audit-badge-assembly">🔨 ${label}</span>`;
+    }
+    if (type.includes('TIMER')) {
+      return `<span class="audit-badge audit-badge-timer">⏱ ${label}</span>`;
+    }
+    if (type.includes('PROJECT') || type.includes('COMPONENT') || type.includes('CAD')) {
+      return `<span class="audit-badge audit-badge-cad">📐 ${label}</span>`;
+    }
+    if (type.includes('PRINT') || type.includes('QR') || type.includes('RAPPORTINO')) {
+      return `<span class="audit-badge audit-badge-print">🖨️ ${label}</span>`;
+    }
+    if (type.includes('ADMIN')) {
+      return `<span class="audit-badge audit-badge-admin">🛡️ ${label}</span>`;
+    }
+    if (type.includes('DELETE')) {
+      return `<span class="audit-badge audit-badge-delete">🗑️ ${label}</span>`;
+    }
+    return `<span class="audit-badge audit-badge-cad">${label}</span>`;
+  }
+
+  openAuditLogModal() {
+    this.sound.playSwitch();
+    const modal = document.getElementById('modal-audit-log');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    this.renderAuditTable();
+
+    const box = modal.querySelector('.modal-box');
+    if (typeof gsap !== 'undefined' && box) {
+      gsap.fromTo(box, { scale: 0.94, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.22, ease: 'power2.out' });
+    }
+  }
+
+  closeAuditLogModal() {
+    const modal = document.getElementById('modal-audit-log');
+    if (modal) modal.style.display = 'none';
+  }
+
+  renderAuditTable() {
+    const tbody = document.getElementById('audit-table-tbody');
+    const kpiContainer = document.getElementById('audit-kpi-container');
+    if (!tbody) return;
+
+    const logs = DB.getAuditLogs({
+      operator: this.auditFilterOp,
+      actionCategory: this.auditActionCategory,
+      searchQuery: this.auditSearchQuery,
+      dateRange: this.auditDateRange
+    });
+
+    const kpis = DB.getAuditKPIs();
+    if (kpiContainer) {
+      kpiContainer.innerHTML = `
+        <div class="audit-kpi-card">
+          <div class="audit-kpi-val">${kpis.totalCount}</div>
+          <div class="audit-kpi-label">MOVIMENTI TOTALI REGISTRATI</div>
+        </div>
+        <div class="audit-kpi-card">
+          <div class="audit-kpi-val" style="color:#00FF88;">${kpis.todayCount}</div>
+          <div class="audit-kpi-label">AZIONI ESEGUITE OGGI</div>
+        </div>
+        <div class="audit-kpi-card">
+          <div class="audit-kpi-val" style="color:#00E5FF; font-size:16px;">${kpis.topOperator}</div>
+          <div class="audit-kpi-label">OPERATORE PIÙ ATTIVO</div>
+        </div>
+        <div class="audit-kpi-card">
+          <div class="audit-kpi-val" style="color:#FFAE42; font-size:15px;">${kpis.latestAction}</div>
+          <div class="audit-kpi-label">ULTIMO MOVIMENTO REGISTRATO</div>
+        </div>
+      `;
+    }
+
+    if (logs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center; padding:36px; color:var(--text-muted); font-size:11px;">
+            Nessun movimento trovato per i filtri selezionati.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td style="font-weight:700; color:#FFFFFF;">
+          <div>${l.time}</div>
+          <div style="font-size:9px; color:var(--text-muted);">${l.date}</div>
+        </td>
+        <td>
+          <span class="badge-op-tag ${this.getOperatorBadgeClass(l.operator)}">
+            ${(l.operator || 'OPERATORE').toUpperCase()}
+          </span>
+        </td>
+        <td>
+          ${this.getAuditBadgeHtml(l.actionType, l.actionLabel)}
+        </td>
+        <td>
+          <div style="font-weight:700; color:#FFFFFF;">${l.componentCode || '--'}</div>
+          <div style="font-size:10px; color:var(--text-muted);">${l.projectCode ? l.projectCode + ' · ' : ''}${l.projectName || ''}</div>
+        </td>
+        <td style="line-height:1.45; color:var(--text-primary);">
+          ${l.details}
+        </td>
+        <td style="font-size:10px; color:var(--text-muted);">
+          ${l.station || 'Officina'}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  exportAuditCSV() {
+    const csv = DB.exportAuditLogsCSV({
+      operator: this.auditFilterOp,
+      actionCategory: this.auditActionCategory,
+      searchQuery: this.auditSearchQuery,
+      dateRange: this.auditDateRange
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    a.download = `MPA_Audit_Movimenti_${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.sound.playSuccess();
+  }
+
+  bindAuditLogEvents() {
+    const btnOpenAudit = document.getElementById('btn-open-audit-log');
+    if (btnOpenAudit) {
+      btnOpenAudit.addEventListener('click', () => {
+        AUTH.requireAdmin(() => this.openAuditLogModal(), 'Accesso Storico Movimenti Admin');
+      });
+    }
+
+    const btnDrawerToAudit = document.getElementById('btn-drawer-to-audit');
+    if (btnDrawerToAudit) {
+      btnDrawerToAudit.addEventListener('click', () => {
+        this.closeActivityDrawer();
+        AUTH.requireAdmin(() => this.openAuditLogModal(), 'Accesso Storico Movimenti Admin');
+      });
+    }
+
+    const btnCloseAudit = document.getElementById('btn-close-audit-log');
+    if (btnCloseAudit) {
+      btnCloseAudit.addEventListener('click', () => this.closeAuditLogModal());
+    }
+
+    document.querySelectorAll('.audit-op-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.audit-op-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.auditFilterOp = btn.dataset.auditOp;
+        this.renderAuditTable();
+      });
+    });
+
+    const actionSelect = document.getElementById('audit-action-type-select');
+    if (actionSelect) {
+      actionSelect.addEventListener('change', (e) => {
+        this.auditActionCategory = e.target.value;
+        this.renderAuditTable();
+      });
+    }
+
+    const searchInput = document.getElementById('audit-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.auditSearchQuery = e.target.value;
+        this.renderAuditTable();
+      });
+    }
+
+    document.querySelectorAll('.audit-date-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.audit-date-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.auditDateRange = btn.dataset.auditRange;
+        this.renderAuditTable();
+      });
+    });
+
+    const btnExport = document.getElementById('btn-export-audit-csv');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        this.exportAuditCSV();
+      });
+    }
+
+    const btnPrint = document.getElementById('btn-print-audit-report');
+    if (btnPrint) {
+      btnPrint.addEventListener('click', () => {
+        window.print();
+      });
     }
   }
 
