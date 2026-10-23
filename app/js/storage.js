@@ -4,7 +4,7 @@
  * calcolo percentuali e distinta morali.
  */
 
-const STORAGE_KEY = 'mpa_gestionale_data_v7';
+const STORAGE_KEY = 'mpa_gestionale_data_v8';
 const SYNC_QUEUE_KEY = 'mpa_sync_queue_v4';
 
 class StorageManager {
@@ -49,28 +49,61 @@ class StorageManager {
       {
         id: 'notif-1',
         title: 'TAGLIO COMPLETATO PM 09',
-        message: 'Francesca ha completato il taglio del Telaio Posteriore PM 09.',
+        message: 'Francesca ha completato il taglio del Telaio Posteriore PM 09 (6 pezzi).',
         type: 'success',
+        operator: 'Francesca',
+        componentCode: 'PM 09',
         time: '11:50',
         date: 'OGGI',
+        timestamp: Date.now() - 1000 * 60 * 20,
         read: false
       },
       {
         id: 'notif-2',
         title: 'ASSEMBLAGGIO AVVIATO PM 01',
-        message: 'Daniel ha iniziato l\'assemblaggio del Telaio Anteriore al banco.',
+        message: 'Daniel ha iniziato l\'assemblaggio al banco del Telaio Anteriore PM 01.',
         type: 'info',
+        operator: 'Daniel',
+        componentCode: 'PM 01',
         time: '11:00',
         date: 'OGGI',
+        timestamp: Date.now() - 1000 * 60 * 70,
         read: false
       },
       {
         id: 'notif-3',
-        title: 'SCADENZA COMMESSA',
-        message: 'Cabine Etruria Nuova in scadenza il 15.10.2026.',
+        title: 'TAGLIO MORALI PM 01',
+        message: 'Francesca ha spuntato i 4 montanti L. 3034 mm su PM 01.',
+        type: 'info',
+        operator: 'Francesca',
+        componentCode: 'PM 01',
+        time: '09:45',
+        date: 'OGGI',
+        timestamp: Date.now() - 1000 * 60 * 140,
+        read: false
+      },
+      {
+        id: 'notif-4',
+        title: 'APPROVAZIONE TAVOLE SEMA',
+        message: 'Maurizio ha approvato le tavole CAD SEMA per Cabine Etruria Nuova.',
+        type: 'success',
+        operator: 'Maurizio',
+        componentCode: 'SEMA 4.0',
+        time: '08:30',
+        date: 'OGGI',
+        timestamp: Date.now() - 1000 * 60 * 210,
+        read: true
+      },
+      {
+        id: 'notif-5',
+        title: 'ACCESSO AMMINISTRATORE',
+        message: 'Michele (Admin) ha controllato il registro tempi e avanzamento commesse.',
         type: 'warning',
+        operator: 'Michele',
+        componentCode: 'ADMIN',
         time: '08:00',
-        date: 'IERI',
+        date: 'OGGI',
+        timestamp: Date.now() - 1000 * 60 * 240,
         read: true
       }
     ];
@@ -180,7 +213,7 @@ class StorageManager {
     return project.components.find(c => c.id === componentId) || null;
   }
 
-  toggleMoral(projectId, componentId, moralId) {
+  toggleMoral(projectId, componentId, moralId, operatorName = 'Francesca') {
     const comp = this.getComponent(projectId, componentId);
     if (!comp || !comp.morali) return false;
 
@@ -188,25 +221,66 @@ class StorageManager {
     if (moral) {
       moral.checked = !moral.checked;
 
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      if (moral.checked) {
+        moral.checkedBy = operatorName;
+        moral.checkedAt = timeStr;
+        moral.checkedDate = dateStr;
+        moral.checkedTimestamp = Date.now();
+
+        this.addNotification(
+          `TAGLIO MORALE ${comp.code}`,
+          `${operatorName} ha tagliato e spuntato: NR ${moral.qty} L. ${moral.length} mm (${moral.desc}) su ${comp.code}.`,
+          'info',
+          operatorName,
+          comp.code,
+          projectId
+        );
+      } else {
+        delete moral.checkedBy;
+        delete moral.checkedAt;
+        delete moral.checkedDate;
+        delete moral.checkedTimestamp;
+      }
+
+      comp.lastModified = `${dateStr} ${timeStr}`;
+      comp.lastModifiedBy = operatorName;
+
       const allChecked = comp.morali.every(m => m.checked);
       const someChecked = comp.morali.some(m => m.checked);
 
       if (allChecked) {
         comp.cutStatus = 'completed';
+        comp.cutOperator = operatorName;
+        comp.cutDate = dateStr;
         if (!comp.cutEndTime) {
-          const now = new Date();
-          comp.cutEndTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          comp.cutEndTime = timeStr;
         }
-      } else if (someChecked && comp.cutStatus === 'todo') {
+
+        this.addNotification(
+          `TAGLIO COMPLETATO ${comp.code}`,
+          `${operatorName} ha completato il taglio di tutti i morali del telaio ${comp.title}.`,
+          'success',
+          operatorName,
+          comp.code,
+          projectId
+        );
+      } else if (someChecked) {
         comp.cutStatus = 'wip';
+        if (!comp.cutOperator) comp.cutOperator = operatorName;
         if (!comp.cutStartTime) {
-          const now = new Date();
-          comp.cutStartTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          comp.cutStartTime = timeStr;
+          comp.cutDate = dateStr;
         }
+      } else {
+        comp.cutStatus = 'todo';
       }
 
       this.saveData(this.data);
-      this.queueAction({ type: 'TOGGLE_MORAL', projectId, componentId, moralId, checked: moral.checked });
+      this.queueAction({ type: 'TOGGLE_MORAL', projectId, componentId, moralId, checked: moral.checked, operator: operatorName });
       return true;
     }
     return false;
@@ -391,7 +465,107 @@ class StorageManager {
     return list.sort((a, b) => b.length - a.length);
   }
 
-  calculateProjectProgress(project) {
+  assignComponentOperator(projectId, componentId, phase, operatorName) {
+    const comp = this.getComponent(projectId, componentId);
+    if (!comp) return false;
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    if (phase === 'cut') {
+      comp.cutOperator = operatorName;
+    } else if (phase === 'assembly') {
+      comp.assemblyOperator = operatorName;
+    }
+    comp.lastModified = `${dateStr} ${timeStr}`;
+    comp.lastModifiedBy = operatorName;
+
+    this.saveData(this.data);
+    this.addNotification(
+      `ASSEGNAZIONE ${comp.code}`,
+      `${operatorName} assegnato a ${phase === 'cut' ? 'Taglio' : 'Montaggio Banco'} su ${comp.code}.`,
+      'info',
+      operatorName,
+      comp.code,
+      projectId
+    );
+    return true;
+  }
+
+  // --- DATI PER RAPPORTINO DI LAVORO GIORNALIERO (DA FOTO ALLEGATE) ---
+  getRapportinoData(targetDate = null) {
+    const dateStr = targetDate || new Date().toLocaleDateString('it-IT');
+    const logs = (this.data.workLogs || []).filter(l => l.date === dateStr || l.date === 'OGGI');
+
+    const rows = logs.map((l, idx) => ({
+      numero: idx + 1,
+      lavorazione: `${l.projectName} · ${l.componentCode} (${l.phase})`,
+      operaContratto: `${l.projectName} - ${l.componentCode}`,
+      operatore: l.operator || 'Francesca',
+      data: l.date || dateStr,
+      oraEntrata: l.startTime || '08:00',
+      oraUscita: l.endTime || '12:00',
+      oreLavorate: l.durationMinutes ? (l.durationMinutes / 60).toFixed(1) : '2.0',
+      quantita: '1 TELAIO',
+      materiale: 'Morali abete C24 piallato, listelli di fermo'
+    }));
+
+    if (rows.length === 0) {
+      // Dati realistici iniziali per il foglio stampabile
+      rows.push(
+        {
+          numero: 1,
+          lavorazione: 'Cabine Etruria Nuova · PM 01 - PM 02 (Taglio Troncatrice)',
+          operaContratto: 'Cabine Balneari Etruria - PM 01 Telaio Anteriore DX/SX',
+          operatore: 'Francesca',
+          data: dateStr,
+          oraEntrata: '08:30',
+          oraUscita: '10:45',
+          oreLavorate: '2.25',
+          quantita: '2 TELAI',
+          materiale: 'Morali lamellare 60x80, listelli fermo'
+        },
+        {
+          numero: 2,
+          lavorazione: 'Cabine Etruria Nuova · PM 09 (Taglio Troncatrice)',
+          operaContratto: 'Cabine Balneari Etruria - PM 09 Telaio Posteriore',
+          operatore: 'Francesca',
+          data: dateStr,
+          oraEntrata: '10:45',
+          oraUscita: '12:30',
+          oreLavorate: '1.75',
+          quantita: '1 TELAIO',
+          materiale: 'Correnti 3034 mm, montanti 1200 mm'
+        },
+        {
+          numero: 3,
+          lavorazione: 'Cabine Etruria Nuova · PM 01 (Banco Assemblaggio)',
+          operaContratto: 'Cabine Balneari Etruria - Assemblaggio Telaio Anteriore',
+          operatore: 'Daniel',
+          data: dateStr,
+          oraEntrata: '11:00',
+          oraUscita: '13:00',
+          oreLavorate: '2.00',
+          quantita: '1 TELAIO',
+          materiale: 'Viteria inox, colla poliuretanica D4'
+        }
+      );
+    }
+
+    const totaleOre = rows.reduce((acc, r) => acc + (parseFloat(r.oreLavorate) || 0), 0).toFixed(2);
+
+    return {
+      data: dateStr,
+      rows,
+      totaleOre,
+      cantierePredefinito: 'Cantiere 1: Marina di Grosseto (GR)',
+      clientePredefinito: 'Stabilimento Balneare Etruria Nuova',
+      numeroRapportino: 'RP-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 899 + 100))
+    };
+  }
+
+    calculateProjectProgress(project) {
     if (!project || !project.components || project.components.length === 0) {
       return project.status === 'completed' ? 100 : 0;
     }
@@ -422,23 +596,32 @@ class StorageManager {
     return Math.min(100, Math.max(0, percent));
   }
 
-  addNotification(title, message, type = 'info') {
+  addNotification(title, message, type = 'info', operatorName = null, componentCode = null, projectId = null) {
     if (!this.data.notifications) this.data.notifications = [];
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}`;
+
     const notif = {
       id: 'notif-' + Date.now(),
       title,
       message,
-      type,
+      type, // 'success' | 'info' | 'warning'
+      operator: operatorName || 'Operatore',
+      componentCode: componentCode || '',
+      projectId: projectId || '',
       time: timeStr,
-      date: 'OGGI',
+      date: dateStr,
+      timestamp: Date.now(),
       read: false
     };
 
     this.data.notifications.unshift(notif);
+    if (this.data.notifications.length > 80) {
+      this.data.notifications.pop();
+    }
     this.saveData(this.data);
+    return notif;
   }
 
   getNotifications() {

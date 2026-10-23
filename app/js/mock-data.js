@@ -6,10 +6,10 @@
 const INITIAL_DATA = {
   // Operatori aziendali (Admin: Michele)
   operators: [
-    { id: 1, name: 'Francesca', role: 'Troncatrice / Taglio', avatar: 'F' },
-    { id: 2, name: 'Daniel', role: 'Banco Assemblaggio', avatar: 'D' },
-    { id: 3, name: 'Michele', role: 'Amministratore / Titolare', avatar: 'M' },
-    { id: 4, name: 'Maurizio', role: 'Direzione Tecnica', avatar: 'MC' }
+    { id: 1, name: 'Francesca', role: 'Troncatrice / Taglio', avatar: 'F', color: '#FFAE42', badgeClass: 'op-francesca' },
+    { id: 2, name: 'Daniel', role: 'Banco Assemblaggio', avatar: 'D', color: '#00E5FF', badgeClass: 'op-daniel' },
+    { id: 3, name: 'Michele', role: 'Amministratore / Titolare', avatar: 'M', color: '#FFFFFF', badgeClass: 'op-michele' },
+    { id: 4, name: 'Maurizio', role: 'Direzione Tecnica SEMA', avatar: 'MC', color: '#C77DFF', badgeClass: 'op-maurizio' }
   ],
 
   // Progetti / Commesse
@@ -42,14 +42,14 @@ const INITIAL_DATA = {
           assemblyStartTime: '11:00',
           assemblyEndTime: null,
           morali: [
-            { id: 'm1-1', qty: 4, length: '3034.00', desc: 'Montanti principali', checked: true },
-            { id: 'm1-2', qty: 4, length: '1937.00', desc: 'Traversini superiori', checked: true },
-            { id: 'm1-3', qty: 2, length: '1141.50', desc: 'Fascione vano porta', checked: true },
-            { id: 'm1-4', qty: 4, length: '1055.50', desc: 'Spallette porta', checked: true },
-            { id: 'm1-5', qty: 2, length: '170.00', desc: 'Zoccolo base', checked: true },
-            { id: 'm1-6', qty: 2, length: '121.50', desc: 'Battuta porta', checked: true },
-            { id: 'm1-7', qty: 4, length: '84.00', desc: 'Spessori architrave', checked: true },
-            { id: 'm1-8', qty: 4, length: '35.50', desc: 'Listelli di fermo', checked: true }
+            { id: 'm1-1', qty: 4, length: '3034.00', desc: 'Montanti principali', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-2', qty: 4, length: '1937.00', desc: 'Traversini superiori', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-3', qty: 2, length: '1141.50', desc: 'Fascione vano porta', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-4', qty: 4, length: '1055.50', desc: 'Spallette porta', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-5', qty: 2, length: '170.00', desc: 'Zoccolo base', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-6', qty: 2, length: '121.50', desc: 'Battuta porta', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-7', qty: 4, length: '84.00', desc: 'Spessori architrave', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm1-8', qty: 4, length: '35.50', desc: 'Listelli di fermo', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" }
           ]
         },
         {
@@ -67,12 +67,12 @@ const INITIAL_DATA = {
           assemblyStartTime: null,
           assemblyEndTime: null,
           morali: [
-            { id: 'm2-1', qty: 2, length: '3034.00', desc: 'Correnti longitudinali', checked: true },
-            { id: 'm2-2', qty: 2, length: '1200.00', desc: 'Montanti testata', checked: true },
-            { id: 'm2-3', qty: 4, length: '1114.00', desc: 'Montanti verticali intermedi', checked: true },
-            { id: 'm2-4', qty: 3, length: '1014.90', desc: 'Traverse campata sinistra', checked: true },
-            { id: 'm2-5', qty: 3, length: '836.10', desc: 'Traverse campata centrale', checked: true },
-            { id: 'm2-6', qty: 6, length: '505.50', desc: 'Distanziali perlinatura', checked: true }
+            { id: 'm2-1', qty: 2, length: '3034.00', desc: 'Correnti longitudinali', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm2-2', qty: 2, length: '1200.00', desc: 'Montanti testata', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm2-3', qty: 4, length: '1114.00', desc: 'Montanti verticali intermedi', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm2-4', qty: 3, length: '1014.90', desc: 'Traverse campata sinistra', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm2-5', qty: 3, length: '836.10', desc: 'Traverse campata centrale', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm2-6', qty: 6, length: '505.50', desc: 'Distanziali perlinatura', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" }
           ]
         },
         {
@@ -91,8 +91,8 @@ const INITIAL_DATA = {
           assemblyEndTime: null,
           note: "LA PARTE SOTTO E' A VISTA",
           morali: [
-            { id: 'm3-1', qty: 6, length: '850.00', desc: 'Morali orizzontali telaio', checked: true },
-            { id: 'm3-2', qty: 6, length: '1054.00', desc: 'Morali verticali telaio', checked: true },
+            { id: 'm3-1', qty: 6, length: '850.00', desc: 'Morali orizzontali telaio', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm3-2', qty: 6, length: '1054.00', desc: 'Morali verticali telaio', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
             { id: 'm3-3', qty: 3, length: '764.00', desc: 'Traversini centrali a vista', checked: false }
           ]
         },
@@ -271,8 +271,8 @@ const INITIAL_DATA = {
           cutOperator: 'Francesca',
           assemblyOperator: 'Daniel',
           morali: [
-            { id: 'm-est-1', qty: 4, length: '2800.00', desc: 'Pilastri piallati 4 lati', checked: true },
-            { id: 'm-est-2', qty: 4, length: '400.00', desc: 'Staffe a scomparsa inox', checked: true }
+            { id: 'm-est-1', qty: 4, length: '2800.00', desc: 'Pilastri piallati 4 lati', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm-est-2', qty: 4, length: '400.00', desc: 'Staffe a scomparsa inox', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" }
           ]
         },
         {
@@ -286,8 +286,8 @@ const INITIAL_DATA = {
           cutOperator: 'Francesca',
           assemblyOperator: 'Daniel',
           morali: [
-            { id: 'm-est-3', qty: 2, length: '6000.00', desc: 'Travi banchina', checked: true },
-            { id: 'm-est-4', qty: 12, length: '4200.00', desc: 'Arcarecci sagomati', checked: true }
+            { id: 'm-est-3', qty: 2, length: '6000.00', desc: 'Travi banchina', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" },
+            { id: 'm-est-4', qty: 12, length: '4200.00', desc: 'Arcarecci sagomati', checked: true, checkedBy: "Francesca", checkedAt: "10:45", checkedDate: "23.10.2026" }
           ]
         }
       ]

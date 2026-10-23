@@ -1,5 +1,5 @@
-// Service Worker per MPA Gestionale Produzione v7.2 (Production 4.0: Timer, Gatekeeper & Nesting)
-const CACHE_NAME = 'mpa-gestionale-v7.2';
+// Service Worker per MPA Gestionale Produzione v8.0 (Live Operator Activity, Audit & A4 Printable Work Report)
+const CACHE_NAME = 'mpa-gestionale-v8.0';
 const STATIC_ASSETS = [
   './',
   './index.html',

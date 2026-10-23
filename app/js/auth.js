@@ -1,6 +1,6 @@
 /**
- * AUTH & ROLE MANAGER (M.P.A. PRODUZIONE)
- * Gestisce l'identificazione operatore a un tocco e la protezione PIN Admin per Maurizio.
+ * AUTH & ROLE MANAGER (M.P.A. DI MAURIZIO CAVALLARO)
+ * Gestisce l'identificazione operatore e la protezione rigida PIN Admin (1991) per Michele.
  */
 
 const AUTH_KEYS = {
@@ -16,6 +16,8 @@ class AuthManager {
     this.activeOperator = this.loadActiveOperator();
     this.isAdmin = false;
     this.enteredPin = '';
+    this.pendingAdminAction = null;
+    this.pendingAdminTitle = '';
   }
 
   loadActiveOperator() {
@@ -26,7 +28,9 @@ class AuthManager {
       } catch (e) {}
     }
     // Operatore di default: Francesca
-    const defaultOp = INITIAL_DATA.operators[0];
+    const defaultOp = (typeof INITIAL_DATA !== 'undefined' && INITIAL_DATA.operators) 
+      ? INITIAL_DATA.operators[0] 
+      : { id: 'op-1', name: 'Francesca', role: 'Troncatrice & CAD', color: '#FFAE42', badgeClass: 'op-francesca' };
     this.setActiveOperator(defaultOp);
     return defaultOp;
   }
@@ -36,7 +40,17 @@ class AuthManager {
     localStorage.setItem(AUTH_KEYS.ACTIVE_OP, JSON.stringify(operator));
   }
 
-  // Verifica PIN Admin per Maurizio
+  setActiveOperatorById(id) {
+    const ops = (typeof DB !== 'undefined' && DB.getOperators) ? DB.getOperators() : (INITIAL_DATA ? INITIAL_DATA.operators : []);
+    const found = ops.find(o => o.id === id);
+    if (found) {
+      this.setActiveOperator(found);
+      return found;
+    }
+    return null;
+  }
+
+  // Verifica PIN Admin per Michele
   verifyAdminPin(pin) {
     if (pin === DEFAULT_ADMIN_PIN) {
       this.isAdmin = true;
@@ -47,6 +61,53 @@ class AuthManager {
 
   logoutAdmin() {
     this.isAdmin = false;
+    this.pendingAdminAction = null;
+    this.pendingAdminTitle = '';
+  }
+
+  /**
+   * Richiede privilegi Admin Michele per eseguire un'azione sensibile.
+   * Se l'utente è già autenticato come Admin, esegue subito la callback.
+   * Altrimenti apre il modal PIN 1991 e salva la callback per l'esecuzione post-sblocco.
+   */
+  requireAdmin(callback, actionName = 'Modifica riservata ad Admin') {
+    if (this.isAdmin) {
+      callback();
+      return;
+    }
+
+    this.pendingAdminAction = callback;
+    this.pendingAdminTitle = actionName;
+    this.enteredPin = '';
+
+    const modal = document.getElementById('modal-admin-pin');
+    const pinTitle = document.getElementById('pin-modal-custom-title');
+    if (pinTitle) {
+      pinTitle.textContent = `PROTEZIONE: ${actionName.toUpperCase()}`;
+    }
+
+    if (window.app && typeof window.app.updatePinDots === 'function') {
+      window.app.updatePinDots();
+    }
+
+    if (modal) {
+      modal.style.display = 'flex';
+      if (typeof gsap !== 'undefined') {
+        const box = modal.querySelector('.modal-pin-box');
+        if (box) {
+          gsap.fromTo(box, { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: 'power2.out' });
+        }
+      }
+    }
+  }
+
+  executePendingAction() {
+    if (typeof this.pendingAdminAction === 'function') {
+      const act = this.pendingAdminAction;
+      this.pendingAdminAction = null;
+      this.pendingAdminTitle = '';
+      act();
+    }
   }
 }
 
